@@ -5,16 +5,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "pwa-node",
+      "name": "Compile: hcl",
+      "type": "node",
       "request": "launch",
-      "name": "Launch Program",
-      "skipFiles": [
-        "<node_internals>/**"
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--no-lazy",
+        "-r",
+        "ts-node/register/transpile-only",
+        "--preserve-symlinks",
+        "--preserve-symlinks-main"
       ],
-      "program": "${workspaceFolder}/index.js",
-      "outFiles": [
-        "${workspaceFolder}/**/*.js"
-      ]
+      "skipFiles": ["<node_internals>/**"],
+      "args": ["lib/index.ts", "test/terraform", "--language", "hcl"]
     }
   ]
 }

@@ -4,6 +4,7 @@
   "description": "Generate Suspected CloudTrail Events from Terraform HCL",
   "main": "index.js",
   "scripts": {
+    "compile": "ts-node lib/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "scripts/generate-hcl-wasm"
   },
@@ -29,6 +30,7 @@
     "@cdktf/provider-docker": "6.0.0",
     "@types/jest": "^29.4.0",
     "@types/node": "^18.13.0",
+    "arg": "^5.0.2",
     "cdktf": "^0.15.4",
     "constructs": "^10.1.250",
     "copy-webpack-plugin": "^11.0.0",

@@ -2,4 +2,4 @@
 cd node_modules/tree-sitter-hcl
 npx tree-sitter generate --no-bindings
 npx tree-sitter build-wasm
-mv tree-sitter-hcl.wasm ../../
+mv tree-sitter-hcl.wasm ../../lib

@@ -37,7 +37,7 @@ module.exports = (env, argv) => {
             to: path.resolve(__dirname, "dist/tree-sitter.wasm"),
           },
           {
-            from: path.resolve(__dirname, "tree-sitter-hcl.wasm"),
+            from: path.resolve(__dirname, "lib/tree-sitter-hcl.wasm"),
             to: path.resolve(__dirname, "dist/tree-sitter-hcl.wasm"),
           },
         ],
