@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DIR=$PWD
+
+# generate hcl wasm
+cd  $DIR/node_modules/tree-sitter-hcl
+npx tree-sitter generate --no-bindings
+npx tree-sitter build-wasm
+mv tree-sitter-hcl.wasm $DIR/lib
+
+cd $DIR
+mkdir -p $DIR/lib/vendor/adk
+cp -r $DIR/node_modules/@zorse/adk/src/core/* $DIR/lib/vendor/adk
+

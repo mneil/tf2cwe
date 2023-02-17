@@ -37,7 +37,7 @@ resource "aws_instance" "app_server" {
   instance_type = "t2.micro"
 
   count = 2
-  name  = "my-ec2-cluster-${count.index}"
+  name  = "my-ec2-cluster-${count.index}${instance_type}-bar"
 
   vpc_security_group_ids = [module.vpc.default_security_group_id]
   subnet_id              = module.vpc.public_subnets[0]

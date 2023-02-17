@@ -199,3 +199,4 @@ cdktf.log
 .terraform
 tsconfig.tsbuildinfo
 !test/terraform/dev.tfvars
+lib/vendor
