@@ -11,7 +11,7 @@ module.exports = (env, argv) => {
     target: "node",
     devtool: false,
     output: {
-      path: path.resolve(__dirname, "dist"),
+      path: path.resolve(__dirname, "dist", "lib"),
       library: {
         commonjs: "tf2cwe",
         amd: "tf2cwe",
@@ -20,31 +20,31 @@ module.exports = (env, argv) => {
       libraryTarget: "umd",
       umdNamedDefine: true,
       globalObject: `(typeof self !== 'undefined' ? self : this)`,
-      filename: "main.js",
+      filename: "index.js",
     },
     plugins: [
-      new AfterBuild((compiler) => {
+      new AfterBuild(() => {
         const pkg = require("./package.json");
         delete pkg.scripts;
         delete pkg.devDependencies;
         delete pkg.overrides;
-        fs.writeFileSync(path.resolve(compiler.options.output.path, "package.json"), JSON.stringify(pkg, undefined, 2));
+        fs.writeFileSync(path.resolve(__dirname, "dist", "package.json"), JSON.stringify(pkg, undefined, 2));
       }),
       new CopyPlugin({
         patterns: [
           {
-            from: path.resolve(__dirname, "node_modules/web-tree-sitter/tree-sitter.wasm"),
-            to: path.resolve(__dirname, "dist/tree-sitter.wasm"),
+            from: path.resolve(__dirname, "node_modules", "web-tree-sitter", "tree-sitter.wasm"),
+            to: path.resolve(__dirname, "dist", "lib", "tree-sitter.wasm"),
           },
           {
-            from: path.resolve(__dirname, "lib/tree-sitter-hcl.wasm"),
-            to: path.resolve(__dirname, "dist/tree-sitter-hcl.wasm"),
+            from: path.resolve(__dirname, "tree-sitter-hcl.wasm"),
+            to: path.resolve(__dirname, "dist", "tree-sitter-hcl.wasm"),
           },
         ],
       }),
     ],
     optimization: {
-      minimize: true,
+      minimize: argv.mode === "development" ? false : true,
       nodeEnv: false,
     },
     node: {
@@ -66,7 +66,42 @@ module.exports = (env, argv) => {
       extensions: [".ts", ".js"],
     },
   };
-  return [config];
+  const bin = {
+    mode: argv.mode === "development" ? "development" : "production",
+    entry: "./bin/tf2cwe.ts",
+    target: "node",
+    devtool: false,
+    output: {
+      path: path.resolve(__dirname, "dist", "bin"),
+      globalObject: `(typeof self !== 'undefined' ? self : this)`,
+      filename: "tf2cwe.js",
+    },
+    externals: [
+      {
+        "../lib/index": "require('../lib/index')",
+      },
+    ],
+
+    plugins: [],
+    optimization: {
+      minimize: argv.mode === "development" ? false : true,
+      nodeEnv: false,
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(ts|tsx)$/i,
+          loader: "ts-loader",
+          exclude: ["/node_modules/"],
+        },
+      ],
+    },
+    externalsPresets: { node: true },
+    resolve: {
+      extensions: [".ts", ".js"],
+    },
+  };
+  return [config, bin];
 };
 
 class AfterBuild {

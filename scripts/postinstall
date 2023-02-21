@@ -2,13 +2,17 @@
 
 DIR=$PWD
 
-# generate hcl wasm
-cd  $DIR/node_modules/tree-sitter-hcl
-npx tree-sitter generate --no-bindings
-npx tree-sitter build-wasm
-mv tree-sitter-hcl.wasm $DIR/lib
-
+# copy adk vendor libs
 cd $DIR
 mkdir -p $DIR/lib/vendor/adk
 cp -r $DIR/node_modules/@zorse/adk/src/core/* $DIR/lib/vendor/adk
 
+# generate tf grammar wasm
+# must have DOCKER for this to work
+cd $DIR
+npx tree-sitter generate --no-bindings
+cp $DIR/node_modules/tree-sitter-hcl/src/scanner.cc src/scanner.cc
+npx tree-sitter build-wasm
+
+cd $DIR
+cp node_modules/web-tree-sitter/tree-sitter.wasm .
