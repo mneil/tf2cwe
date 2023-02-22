@@ -7,11 +7,12 @@
     "tf2cwe": "./bin/tf2cwe.js"
   },
   "scripts": {
-    "compile": "ts-node lib/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "scripts/postinstall",
     "build": "webpack",
-    "playground": "tree-sitter playground"
+    "build:wasm": "tree-sitter generate --no-bindings && tree-sitter build-wasm",
+    "playground": "tree-sitter playground",
+    "watch:grammar": "scripts/watch"
   },
   "author": "Michael Neil",
   "license": "MIT",

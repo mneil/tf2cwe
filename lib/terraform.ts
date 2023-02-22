@@ -2,16 +2,27 @@ import assert from "assert";
 import fs from "fs";
 import Parser from "web-tree-sitter";
 import * as adk from "./vendor/adk";
+import * as ast from "./ast";
 
-enum NodeType {
-  provider = "provider",
-  resource = "resource",
-  module = "module",
-  output = "output",
-  variable = "variable",
+enum NamedNodes {
+  TemplateLiteral = "template_literal",
+  ResourceName = "resource_name",
+  ResourceType = "resource_type",
+  Body = "body",
+  Attribute = "attribute",
+  Expression = "expression",
 }
 
-type Block = Resource;
+enum BlockType {
+  node_resource = "node_resource",
+  // provider = "provider",
+  // resource = "resource",
+  // module = "module",
+  // output = "output",
+  // variable = "variable",
+}
+
+type Block = ast.ResourceNode;
 
 interface Property {}
 
@@ -28,13 +39,12 @@ interface Context {
   readonly node: Parser.SyntaxNode;
 }
 
-function getAllRuleNodeTypes(): string[] {
-  return Object.values(NodeType);
+function getAllBlockTypes(): string[] {
+  return Object.values(BlockType);
 }
 
-function emitProperty(key: Parser.SyntaxNode, value: Parser.SyntaxNode, context: Context) {
-  console.log(key, value, context);
-  return { [key.text]: value };
+function emitProperty(value: Parser.SyntaxNode, context: Context) {
+  return value.text;
   // (template_expr (quoted_template (template_literal) @lit (template_interpolation) @temp ) )
   // (template_expr (quoted_template (template_literal)? @lit (template_interpolation)? @int  ))
 
@@ -47,19 +57,40 @@ function emitProperty(key: Parser.SyntaxNode, value: Parser.SyntaxNode, context:
   //
 }
 
-function emitBlockResource(context: Context): Resource {
-  const body = context.parser
-    .getLanguage()
-    .query("(attribute (identifier) @key (expression) @value)")
-    .captures(context.node.parent);
-  assert.ok(body.length % 2 === 0, "missing pairs for properties in resource block");
-  const resource: Resource = {
-    node: context.node,
-    properties: [],
+function emitBlockResource(context: Context): ast.ResourceNode {
+  let type, name;
+  const namedNodes = [NamedNodes.ResourceType.valueOf(), NamedNodes.ResourceName.valueOf()];
+  context.node.namedChildren.forEach((c) => {
+    if (!namedNodes.includes(c.type)) {
+      return;
+    }
+    const value = c.children.filter((c2) => c2.type === NamedNodes.TemplateLiteral);
+    c.type === NamedNodes.ResourceType && (type = value[0]?.text);
+    c.type === NamedNodes.ResourceName && (name = value[0]?.text);
+  });
+  assert.ok(type, "no type found for resource");
+  assert.ok(name, "no name found for resource");
+
+  const body = context.node.namedChildren.filter((n) => n.type === NamedNodes.Body)[0];
+
+  const resource: ast.ResourceNode = {
+    id: context.node.id,
+    name,
+    type,
+    properties: {},
   };
-  for (let i = 0; i < body.length; i += 2) {
-    resource.properties.push(emitProperty(body[i].node, body[i + 1].node, context));
-  }
+  body.namedChildren.forEach((child) => {
+    assert.ok(child.namedChildCount === 2, "missing pairs for properties in resource block");
+    resource.properties[child.namedChildren[0].text] = emitProperty(child.namedChildren[1], context);
+  });
+  // const body = context.parser
+  //   .getLanguage()
+  //   .query("(attribute (identifier) @key (expression) @value)")
+  //   .captures(context.node.parent);
+
+  // for (let i = 0; i < body.length; i += 2) {
+  //   resource.properties.push(emitProperty(body[i].node, body[i + 1].node, context));
+  // }
   return resource;
 }
 
@@ -70,28 +101,28 @@ function emitBlock(context: Context): Block {
   let iterator: Parser.SyntaxNode | null = context.node.parent;
   let root = true;
   while (iterator) {
-    if (getAllRuleNodeTypes().includes(iterator.text)) {
+    if (getAllBlockTypes().includes(iterator.text)) {
       root = false;
       break;
     }
     iterator = iterator.parent;
   }
   const block = (() => {
-    switch (context.node.text) {
-      case NodeType.resource:
+    switch (context.node.type) {
+      case BlockType.node_resource:
         return emitBlockResource(context);
-      case NodeType.provider:
-      case NodeType.module:
-      case NodeType.variable:
-      case NodeType.output:
-        return undefined;
+      // case BlockType.provider:
+      // case BlockType.module:
+      // case BlockType.variable:
+      // case BlockType.output:
+      //   return undefined;
       default:
         assert.ok(false, `unhandled node type: ${context.node.type}`);
     }
   })();
   if (block) {
     if (root) {
-      context.blockRoots.add(block.node.id);
+      context.blockRoots.add(block.id);
     }
     context.blockCache.set(context.node.id, block);
   }
@@ -110,10 +141,15 @@ export async function compile(parser: Parser, sources: { [key: string]: string[]
   }, "");
 
   const tree = parser.parse(gigaTf);
-  const blocks = parser
-    .getLanguage()
-    .query("(block (identifier) @block (string_lit (template_literal)))")
-    .captures(tree.rootNode);
+  const blocks = getAllBlockTypes()
+    .map((q) => `(${q}) @block`)
+    .map((q) => parser.getLanguage().query(q))
+    .map((q) => q.captures(tree.rootNode))
+    .flatMap((q) => q);
+  // const blocks = parser
+  //   .getLanguage()
+  //   .query("(block (identifier) @block (string_lit (template_literal)))")
+  //   .captures(tree.rootNode);
 
   for (const block of blocks) {
     emitBlock({ node: block.node, blockCache, blockRoots, parser, resources: [] });
@@ -126,7 +162,7 @@ export async function compile(parser: Parser, sources: { [key: string]: string[]
 
   // const blockRoots = new Set<string>();
   // const token = "cap";
-  // const ruleQueries = getAllRuleNodeTypes()
+  // const ruleQueries = getAllBlockTypes()
   //   .map((q) => `(${q}) @${token}`)
   //   .map((q) => parser.getLanguage().query(q))
   //   .map((q) => q.captures(tree.rootNode))

@@ -1,0 +1,6 @@
+#!/bin/bash
+inotifywait -m -e modify $PWD/grammar.js |
+  while read file_path file_event file_name; do
+    npm run build:wasm
+    echo "ready"
+  done
