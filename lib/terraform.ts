@@ -1,11 +1,66 @@
 import assert from "assert";
 import fs from "fs";
 import Parser from "web-tree-sitter";
-import * as adk from "./vendor/adk";
+// import * as adk from "./vendor/adk";
 import * as ast from "./ast";
 
-enum NamedNodes {
+// https://developer.hashicorp.com/terraform/language/expressions/reference
+enum NamedValue {
+  Variable = "var",
+  Local = "local",
+  Module = "module",
+  Data = "data",
+  FileSystem = "path",
+  Workspace = "terraform",
+  Count = "count",
+  Each = "each",
+  Self = "self", // https://developer.hashicorp.com/terraform/language/expressions/references#self
+}
+
+// https://developer.hashicorp.com/terraform/language/expressions/strings
+enum TemplateExpression {
+  QuotedTemplate = "quoted_template",
+  Start = "quoted_template_start",
+  Interpolation = "template_interpolation",
+  Directive = "template_directive",
+  // Literal = "template_literal",
+  End = "quoted_template_end",
+
+  HereDocStart = "heredoc_start",
+  HereDocIdentifier = "heredoc_identifier",
+  HereDocTemplate = "heredoc_template",
+  // HereDocTemplate = "_template",
+}
+
+enum CollectionValue {
+  Tuple = "tuple",
+  Object = "object",
+}
+
+enum LiteralValue {
+  NumericLit = "numeric_lit",
+  BoolLit = "bool_lit",
+  NullLit = "null_lit",
+  StringLit = "string_lit",
   TemplateLiteral = "template_literal",
+}
+
+enum ExpressionNode {
+  Literal = "literal_value",
+  TemplateExpression = "template_expr",
+  CollectionValue = "collection_value",
+  VariableExpression = "variable_expr",
+  Function = "function_call",
+  ForExpression = "for_expr",
+  Operation = "operation",
+  IndexedAccess = "index", // ex: module.vpc.public_subnets[0] - seq($._expr_term, $.index),
+  RawReference = "get_attr", // ex: var.named.variable where named and variable are get_at) - seq($._expr_term, $.get_attr),
+  Splat = "splat", // ex: var.ref.* - seq($._expr_term, $.splat),
+  Expression = "expression", // ex: nested expressions - seq('(', $.expression, ')'),
+  Conditional = "conditional", // ternary
+}
+
+enum ResourceNode {
   ResourceName = "resource_name",
   ResourceType = "resource_type",
   Body = "body",
@@ -24,81 +79,226 @@ enum BlockType {
 
 type Block = ast.ResourceNode;
 
-interface Property {}
-
-interface Resource {
-  node: Parser.SyntaxNode;
-  properties: Property[];
-}
-
 interface Context {
-  readonly resources: Resource[];
-  readonly parser: Parser;
-  readonly blockCache: Map<number, Block>;
-  readonly blockRoots: Set<number>;
   readonly node: Parser.SyntaxNode;
+  readonly resources: ast.ResourceNode[];
+  readonly parser: Parser;
+  // readonly blockCache: Map<number, Block>;
+  // readonly blockRoots: Set<number>;
 }
 
 function getAllBlockTypes(): string[] {
   return Object.values(BlockType);
 }
 
-function emitProperty(value: Parser.SyntaxNode, context: Context) {
-  return value.text;
-  // (template_expr (quoted_template (template_literal) @lit (template_interpolation) @temp ) )
-  // (template_expr (quoted_template (template_literal)? @lit (template_interpolation)? @int  ))
-
-  // gets parts of a literal
-  // (template_expr (quoted_template (template_literal) @lit  ) )
-
-  // string value
-  // context.parser.getLanguage().query("(literal_value (string_lit (template_literal) @str))").captures(value);
-
-  //
+function emitLiteralValue(node: Parser.SyntaxNode) {
+  assert.ok(
+    node.type === ExpressionNode.Literal,
+    `received node type ${node.type}. expected ${ExpressionNode.Literal}`
+  );
+  const firstChild = node.firstChild;
+  switch (firstChild.type) {
+    case LiteralValue.StringLit:
+      return firstChild.namedChildren[1].text;
+    case LiteralValue.BoolLit:
+      return firstChild.text.toLowerCase() === "false" ? false : true;
+    case LiteralValue.NullLit:
+      return null;
+    case LiteralValue.NumericLit:
+      return Number(firstChild.text);
+    case LiteralValue.TemplateLiteral:
+      return Number(firstChild.text);
+    default:
+      assert.ok(false, `unknown ${ExpressionNode.Literal}: ${firstChild.type}`);
+  }
 }
 
-function emitBlockResource(context: Context): ast.ResourceNode {
+function emitTemplateExpression(context: Context, value: Parser.SyntaxNode): string {
+  assert.ok(
+    value.type === ExpressionNode.TemplateExpression,
+    `received node type ${value.type}. expected ${ExpressionNode.TemplateExpression}`
+  );
+  switch (value.firstChild.type) {
+    case TemplateExpression.HereDocTemplate:
+      return ""; // TODO: implement heredoc
+    case TemplateExpression.QuotedTemplate:
+      return value.firstChild.namedChildren.reduce((value, node) => {
+        switch (node.type) {
+          case LiteralValue.TemplateLiteral:
+            return value + node.text;
+          case TemplateExpression.Interpolation:
+            return value + emitTemplateInterpolation(context, node);
+          default:
+            return value;
+        }
+      }, "");
+    default:
+      assert.ok(false, `unsupported template expression type ${value.firstChild.type}`);
+  }
+}
+
+function emitTemplateInterpolation(context: Context, node: Parser.SyntaxNode) {
+  assert.ok(
+    node.type === TemplateExpression.Interpolation,
+    `received node type ${node.type}. expected ${TemplateExpression.Interpolation}`
+  );
+  const expression = node.namedChildren.filter((n) => n.type === ResourceNode.Expression)[0];
+  return emitExpression(context, expression);
+}
+
+function emitVariableExpression(context: Context, node: Parser.SyntaxNode): string | ast.Reference {
+  // TODO: need to implement more agnositic resolvers in the AST
+  assert.ok(
+    node.firstNamedChild.type === ExpressionNode.VariableExpression,
+    `received node type ${node.firstNamedChild.type}. expected ${ExpressionNode.VariableExpression}`
+  );
+  let target = { id: context.node.id };
+  switch (node.firstNamedChild.text) {
+    case NamedValue.Variable:
+      return { id: node.id, target: "variable", property: [node.lastNamedChild.lastNamedChild.text] };
+    case NamedValue.Local:
+      return { id: node.id, target: "local", property: [node.lastNamedChild.lastNamedChild.text] };
+    case NamedValue.Module:
+      const moduleProperty = node.namedChildren
+        .map((node, index) => {
+          if (index === 0) return undefined;
+          if (node.type === "index") {
+            if (node.firstNamedChild.type === "new_index") return Number(node.firstNamedChild.firstNamedChild.text);
+            if (node.firstNamedChild.type === "legacy_index") return Number(node.firstNamedChild.text.split(".").pop());
+          }
+          return node.firstNamedChild.text;
+        })
+        .filter((c) => c !== undefined);
+      return { id: node.id, target: "module", property: moduleProperty };
+    case NamedValue.Data:
+      // TODO: have to figure out how to make this work and turn into AST
+      assert.ok(false, "data source is unsupported at this time");
+    case NamedValue.FileSystem:
+      // TODO: implement all of the filesystem paths
+      // https://developer.hashicorp.com/terraform/language/expressions/references#filesystem-and-workspace-info
+      return process.cwd();
+    case NamedValue.Workspace:
+      // TODO: allow configuration of the workspace? Can we infer it?
+      return "";
+    case NamedValue.Count:
+      return { id: node.id, target, property: ["_meta_", "index"] };
+    case NamedValue.Each:
+      return {
+        id: node.id,
+        target,
+        property: ["_meta_", "each", node.lastNamedChild.firstNamedChild.text],
+      };
+    case NamedValue.Self:
+      const selfProperty = node.namedChildren
+        .map((node, index) => {
+          if (index === 0) return undefined;
+          return node.text;
+        })
+        .filter((c) => c !== undefined);
+      return { id: node.id, target, property: selfProperty };
+    default:
+      // resource reference?
+      if (node.namedChildCount === 1) {
+        // local node reference
+        return { id: node.id, target, property: [node.firstNamedChild.text] };
+      }
+      const property = node.namedChildren.map((node) => {
+        return node.text;
+      });
+      return { id: node.id, target, property };
+  }
+}
+function emitCollectionValue(context: Context, node: Parser.SyntaxNode) {
+  switch (node.firstNamedChild.type) {
+    case CollectionValue.Tuple:
+      const value = node.firstNamedChild.namedChildren
+        .map((c) => {
+          if (c.type !== ResourceNode.Expression) return undefined;
+          return emitExpression(context, c);
+        })
+        .filter((c) => c !== undefined);
+      return value as ast.PropertyValue[];
+    case CollectionValue.Object:
+      // const objectElements = node.firstNamedChild.namedChildren
+      //   .map((c) => {
+      //     if (c.type !== ResourceNode.Expression) return undefined;
+      //     return emitExpression(context, c);
+      //   })
+      //   .filter((c) => c !== undefined);
+      return {};
+    default:
+      assert.ok(false, `unknown collection type ${node.firstChild.type}`);
+  }
+}
+
+function emitExpression(context: Context, node: Parser.SyntaxNode): ast.PropertyValue {
+  assert.ok(
+    node.type === ResourceNode.Expression,
+    `received node type ${node.type}. expected ${ResourceNode.Expression}`
+  );
+  switch (node.firstChild.type) {
+    case ExpressionNode.Literal:
+      return emitLiteralValue(node.firstChild);
+    case ExpressionNode.TemplateExpression:
+      return emitTemplateExpression(context, node.firstChild);
+    case ExpressionNode.CollectionValue:
+      return emitCollectionValue(context, node.firstChild);
+    case ExpressionNode.VariableExpression:
+      return emitVariableExpression(context, node);
+    case ExpressionNode.Function:
+      return "";
+    case ExpressionNode.ForExpression:
+      return "";
+    case ExpressionNode.Operation:
+      return "";
+    case ExpressionNode.IndexedAccess:
+      return "";
+    case ExpressionNode.RawReference:
+      return "";
+    case ExpressionNode.Splat:
+      return "";
+    case ExpressionNode.Expression:
+      return "";
+    case ExpressionNode.Conditional:
+      return "";
+    default:
+      assert.ok(false, `unknown expression type ${node.firstChild.type}`);
+  }
+}
+
+function emitBlockResource(context: Context, node: Parser.SyntaxNode): ast.ResourceNode {
   let type, name;
-  const namedNodes = [NamedNodes.ResourceType.valueOf(), NamedNodes.ResourceName.valueOf()];
-  context.node.namedChildren.forEach((c) => {
+  const namedNodes = [ResourceNode.ResourceType.valueOf(), ResourceNode.ResourceName.valueOf()];
+  node.namedChildren.forEach((c) => {
     if (!namedNodes.includes(c.type)) {
       return;
     }
-    const value = c.children.filter((c2) => c2.type === NamedNodes.TemplateLiteral);
-    c.type === NamedNodes.ResourceType && (type = value[0]?.text);
-    c.type === NamedNodes.ResourceName && (name = value[0]?.text);
+    const value = c.children.filter((c2) => c2.type === LiteralValue.TemplateLiteral);
+    c.type === ResourceNode.ResourceType && (type = value[0]?.text);
+    c.type === ResourceNode.ResourceName && (name = value[0]?.text);
   });
-  assert.ok(type, "no type found for resource");
-  assert.ok(name, "no name found for resource");
+  assert.ok(type, "unknown type for resource");
+  assert.ok(name, "unknown name for resource");
 
-  const body = context.node.namedChildren.filter((n) => n.type === NamedNodes.Body)[0];
+  const body = node.namedChildren.filter((n) => n.type === ResourceNode.Body)[0];
 
   const resource: ast.ResourceNode = {
-    id: context.node.id,
+    id: node.id,
     name,
     type,
     properties: {},
   };
   body.namedChildren.forEach((child) => {
-    assert.ok(child.namedChildCount === 2, "missing pairs for properties in resource block");
-    resource.properties[child.namedChildren[0].text] = emitProperty(child.namedChildren[1], context);
+    resource.properties[child.namedChildren[0].text] = emitExpression(context, child.namedChildren[1]);
   });
-  // const body = context.parser
-  //   .getLanguage()
-  //   .query("(attribute (identifier) @key (expression) @value)")
-  //   .captures(context.node.parent);
-
-  // for (let i = 0; i < body.length; i += 2) {
-  //   resource.properties.push(emitProperty(body[i].node, body[i + 1].node, context));
-  // }
   return resource;
 }
 
-function emitBlock(context: Context): Block {
-  if (context.blockCache.has(context.node.id)) {
-    return context.blockCache.get(context.node.id);
-  }
-  let iterator: Parser.SyntaxNode | null = context.node.parent;
+function emitBlock(context: Context, node: Parser.SyntaxNode): Block {
+  // if (context.blockCache.has(node.id)) {
+  //   return context.blockCache.get(node.id);
+  // }
+  let iterator: Parser.SyntaxNode | null = node.parent;
   let root = true;
   while (iterator) {
     if (getAllBlockTypes().includes(iterator.text)) {
@@ -108,24 +308,26 @@ function emitBlock(context: Context): Block {
     iterator = iterator.parent;
   }
   const block = (() => {
-    switch (context.node.type) {
+    switch (node.type) {
       case BlockType.node_resource:
-        return emitBlockResource(context);
+        const block = emitBlockResource(context, node);
+        context.resources.push(block);
+        return block;
       // case BlockType.provider:
       // case BlockType.module:
       // case BlockType.variable:
       // case BlockType.output:
       //   return undefined;
       default:
-        assert.ok(false, `unhandled node type: ${context.node.type}`);
+        assert.ok(false, `unhandled node type: ${node.type}`);
     }
   })();
-  if (block) {
-    if (root) {
-      context.blockRoots.add(block.id);
-    }
-    context.blockCache.set(context.node.id, block);
-  }
+  // if (block) {
+  //   if (root) {
+  //     context.blockRoots.add(block.id);
+  //   }
+  //   context.blockCache.set(node.id, block);
+  // }
   return block;
 }
 
@@ -133,8 +335,8 @@ export async function compile(parser: Parser, sources: { [key: string]: string[]
   if (!sources[".tf"]) {
     throw new Error("Input contains no .tf files. only .tf files are supported");
   }
-  const blockCache = new Map<number, Block>();
-  const blockRoots = new Set<number>();
+  // const blockCache = new Map<number, Block>();
+  // const blockRoots = new Set<number>();
 
   const gigaTf = sources[".tf"].reduce((prev, next) => {
     return prev + fs.readFileSync(next, { encoding: "utf-8" });
@@ -146,62 +348,9 @@ export async function compile(parser: Parser, sources: { [key: string]: string[]
     .map((q) => parser.getLanguage().query(q))
     .map((q) => q.captures(tree.rootNode))
     .flatMap((q) => q);
-  // const blocks = parser
-  //   .getLanguage()
-  //   .query("(block (identifier) @block (string_lit (template_literal)))")
-  //   .captures(tree.rootNode);
-
+  const context: Context = { node: undefined /*, blockCache, blockRoots*/, parser, resources: [] };
   for (const block of blocks) {
-    emitBlock({ node: block.node, blockCache, blockRoots, parser, resources: [] });
+    emitBlock({ ...context, node: block.node }, block.node);
   }
-
-  // console.log(tree.rootNode.toString());
-  // const bodies: string[] = [];
-  // const regoRulenames: string[] = [];
-  // const kebabRegExp = new RegExp(/[^a-zA-Z0-9]|-{1,}/, "g");
-
-  // const blockRoots = new Set<string>();
-  // const token = "cap";
-  // const ruleQueries = getAllBlockTypes()
-  //   .map((q) => `(${q}) @${token}`)
-  //   .map((q) => parser.getLanguage().query(q))
-  //   .map((q) => q.captures(tree.rootNode))
-  //   .flatMap((q) => q);
-  // const rules: string[] = [];
-  // for (const ruleQuery of ruleQueries) {
-  //   assert.ok(ruleQuery.name === token);
-  //   const node = ruleQuery.node;
-  //   emitRule({ node, rules, blockCache, blockRoots });
-  // }
-  // let header = "";
-  // if (sources.length === 1) {
-  //   header = "package rule2rego\ndefault allow := false";
-  // } else {
-  //   const pkgPath = path.relative(sourceRoot, sourcePath).slice(0, -5);
-  //   const ruleName = pkgPath.replace(kebabRegExp, "");
-  //   regoRulenames.push(ruleName);
-  //   header = `package rule2rego.${ruleName}\ndefault allow := false`;
-  // }
-  // const init = [...new Set(Array.from(blockCache.values()))].map((i) => `default ${i} := false`).join("\n");
-  // const policy = `\n${rules.join("\n")}`;
-  // const footer = `allow {\n\t${Array.from(blockRoots).join("\n\t")}\n}`;
-  // const body = `${header}\n${init}${policy}\n${footer}`.replace(/\n\n/g, "\n");
-  // if (options.input === process.argv[2]) {
-  //   console.log(body);
-  //   console.log("");
-  // }
-  // bodies.push(body);
-
-  // if (sources.length > 1) {
-  //   // add the main
-  //   const body = `package rule2rego\ndefault allow := false\nallow {\n  data.rule2rego.${regoRulenames.join(
-  //     ".allow\n}\nallow {\n  data.rule2rego."
-  //   )}.allow\n}`;
-  //   bodies.splice(0, 0, body);
-  //   if (options.input === process.argv[2]) {
-  //     console.log(body);
-  //     console.log("");
-  //   }
-  // }
-  // return bodies;
+  console.log(JSON.stringify(context.resources, undefined, 2));
 }
