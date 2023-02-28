@@ -32,6 +32,10 @@ enum TemplateExpression {
   // HereDocTemplate = "_template",
 }
 
+enum ObjectValue {
+  ObjectElement = "object_elem",
+}
+
 enum CollectionValue {
   Tuple = "tuple",
   Object = "object",
@@ -217,15 +221,14 @@ function emitCollectionValue(context: Context, node: Parser.SyntaxNode) {
           return emitExpression(context, c);
         })
         .filter((c) => c !== undefined);
-      return value as ast.PropertyValue[];
+      return value as ast.PropertyValue;
     case CollectionValue.Object:
-      // const objectElements = node.firstNamedChild.namedChildren
-      //   .map((c) => {
-      //     if (c.type !== ResourceNode.Expression) return undefined;
-      //     return emitExpression(context, c);
-      //   })
-      //   .filter((c) => c !== undefined);
-      return {};
+      let collection: { [key: string]: ast.PropertyValue } = {};
+      node.firstNamedChild.namedChildren.forEach((c) => {
+        if (c.type !== ObjectValue.ObjectElement) return undefined;
+        collection[c.firstNamedChild.text] = emitExpression(context, c.lastNamedChild);
+      });
+      return collection as ast.PropertyValue;
     default:
       assert.ok(false, `unknown collection type ${node.firstChild.type}`);
   }
@@ -268,9 +271,9 @@ function emitExpression(context: Context, node: Parser.SyntaxNode): ast.Property
 
 function emitBlockResource(context: Context, node: Parser.SyntaxNode): ast.ResourceNode {
   let type, name;
-  const namedNodes = [ResourceNode.ResourceType.valueOf(), ResourceNode.ResourceName.valueOf()];
+  const namedNodes = [ResourceNode.ResourceType, ResourceNode.ResourceName];
   node.namedChildren.forEach((c) => {
-    if (!namedNodes.includes(c.type)) {
+    if (!namedNodes.includes(c.type as ResourceNode)) {
       return;
     }
     const value = c.children.filter((c2) => c2.type === LiteralValue.TemplateLiteral);
@@ -289,6 +292,7 @@ function emitBlockResource(context: Context, node: Parser.SyntaxNode): ast.Resou
     properties: {},
   };
   body.namedChildren.forEach((child) => {
+    // TODO: handle for_each
     resource.properties[child.namedChildren[0].text] = emitExpression(context, child.namedChildren[1]);
   });
   return resource;

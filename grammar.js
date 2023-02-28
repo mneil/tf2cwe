@@ -17,21 +17,20 @@ module.exports = grammar(hcl, {
 
   rules: {
 
-    // attribute: ($, original) => seq(
-    //   $.attribute_name,
-    //   '=',
-    //   $.attribute_value,
-    // ),
+    body: ($, original) => repeat1(
+      prec.right(
+        choice(
+          original,
+          $.for_each
+        )
+      )
+    ),
 
-    // attribute_name: $ => token(seq(
-    //   choice(/\p{ID_Start}/, '_'),
-    //   repeat(choice(/\p{ID_Continue}/, '-')),
-    // )),
-
-    // attribute_value: $ => prec.right(choice(
-    //   $._expr_term,
-    //   $.conditional,
-    // )),
+    for_each: $ => seq(
+      $.for_each_identifier,
+      '=',
+      $.expression,
+    ),
 
     block: ($, original) => choice(
       original,
@@ -46,6 +45,8 @@ module.exports = grammar(hcl, {
       optional($.body),
       $.block_end,
     ),
+
+    for_each_identifier: ($) => "for_each",
 
     resource_type: ($) => $.string_lit,
     resource_name: ($) => $.string_lit
