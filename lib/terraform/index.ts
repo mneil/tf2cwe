@@ -7,6 +7,7 @@ import { Context } from "./types";
 
 import { emitBlockResource } from "./resource";
 import { emitBlockVariable } from "./variable";
+import { emitBlockLocal } from "./locals";
 
 enum BlockType {
   Resource = "resource",
@@ -49,7 +50,9 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
       case BlockType.Module:
       case BlockType.Output:
       case BlockType.Local:
-        return undefined;
+        const local = emitBlockLocal(context, node);
+        context.blocks.push(local);
+        return local;
       default:
         assert.ok(false, `unhandled node type: ${node.type}`);
     }
@@ -80,11 +83,6 @@ export async function compile(parser: Parser, sources: { [key: string]: string[]
     .query("(block) @block")
     .captures(tree.rootNode)
     .flatMap((q) => q);
-  // getAllBlockTypes()
-  //   .map((q) => `(${q}) @block`)
-  //   .map((q) => parser.getLanguage().query(q))
-  //   .map((q) => q.captures(tree.rootNode))
-  //   .flatMap((q) => q);
   const context: Context = { node: undefined /*, blockCache, blockRoots*/, parser, blocks: [] };
   for (const block of blocks) {
     emitBlock({ ...context, node: block.node }, block.node);
