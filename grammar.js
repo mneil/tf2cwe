@@ -32,23 +32,7 @@ module.exports = grammar(hcl, {
       $.expression,
     ),
 
-    block: ($, original) => choice(
-      original,
-      $.node_resource
-    ),
-
-    node_resource: ($) => seq(
-      "resource",
-      alias($.string_lit, $.resource_type),
-      alias($.string_lit, $.resource_name),
-      $.block_start,
-      optional($.body),
-      $.block_end,
-    ),
-
     for_each_identifier: ($) => "for_each",
 
-    resource_type: ($) => $.string_lit,
-    resource_name: ($) => $.string_lit
   },
 });

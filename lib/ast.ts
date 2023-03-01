@@ -19,8 +19,19 @@ export interface Output extends Node {
   readonly value: string | Reference;
 }
 
-export interface ResourceNode extends Node {
+export interface Resource extends Node {
   readonly name: string;
   readonly type: string;
   readonly properties: Record<string, PropertyValue>;
+}
+
+export interface Variable extends Node {
+  readonly name: string;
+  readonly type: string;
+  readonly default?: string;
+  readonly description?: string;
+  // TODO: validation should be implemented
+  // readonly validation?: string;
+  readonly sensitive?: boolean;
+  readonly nullable?: boolean;
 }

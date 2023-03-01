@@ -1,8 +1,9 @@
 import assert from "assert";
-import fs from "fs";
 import Parser from "web-tree-sitter";
-// import * as adk from "./vendor/adk";
-import * as ast from "./ast";
+import * as ast from "../ast";
+import { Context } from "./types";
+
+const ExpressionNodeValue = "expression";
 
 // https://developer.hashicorp.com/terraform/language/expressions/reference
 enum NamedValue {
@@ -57,42 +58,11 @@ enum ExpressionNode {
   Function = "function_call",
   ForExpression = "for_expr",
   Operation = "operation",
-  IndexedAccess = "index", // ex: module.vpc.public_subnets[0] - seq($._expr_term, $.index),
-  RawReference = "get_attr", // ex: var.named.variable where named and variable are get_at) - seq($._expr_term, $.get_attr),
-  Splat = "splat", // ex: var.ref.* - seq($._expr_term, $.splat),
-  Expression = "expression", // ex: nested expressions - seq('(', $.expression, ')'),
+  // IndexedAccess = "index", // ex: module.vpc.public_subnets[0] - seq($._expr_term, $.index),
+  // RawReference = "get_attr", // ex: var.named.variable where named and variable are get_at) - seq($._expr_term, $.get_attr),
+  // Splat = "splat", // ex: var.ref.* - seq($._expr_term, $.splat),
+  // Expression = "expression", // ex: nested expressions - seq('(', $.expression, ')'),
   Conditional = "conditional", // ternary
-}
-
-enum ResourceNode {
-  ResourceName = "resource_name",
-  ResourceType = "resource_type",
-  Body = "body",
-  Attribute = "attribute",
-  Expression = "expression",
-}
-
-enum BlockType {
-  node_resource = "node_resource",
-  // provider = "provider",
-  // resource = "resource",
-  // module = "module",
-  // output = "output",
-  // variable = "variable",
-}
-
-type Block = ast.ResourceNode;
-
-interface Context {
-  readonly node: Parser.SyntaxNode;
-  readonly resources: ast.ResourceNode[];
-  readonly parser: Parser;
-  // readonly blockCache: Map<number, Block>;
-  // readonly blockRoots: Set<number>;
-}
-
-function getAllBlockTypes(): string[] {
-  return Object.values(BlockType);
 }
 
 function emitLiteralValue(node: Parser.SyntaxNode) {
@@ -146,7 +116,7 @@ function emitTemplateInterpolation(context: Context, node: Parser.SyntaxNode) {
     node.type === TemplateExpression.Interpolation,
     `received node type ${node.type}. expected ${TemplateExpression.Interpolation}`
   );
-  const expression = node.namedChildren.filter((n) => n.type === ResourceNode.Expression)[0];
+  const expression = node.namedChildren.filter((n) => n.type === ExpressionNodeValue)[0];
   return emitExpression(context, expression);
 }
 
@@ -217,7 +187,7 @@ function emitCollectionValue(context: Context, node: Parser.SyntaxNode) {
     case CollectionValue.Tuple:
       const value = node.firstNamedChild.namedChildren
         .map((c) => {
-          if (c.type !== ResourceNode.Expression) return undefined;
+          if (c.type !== ExpressionNodeValue) return undefined;
           return emitExpression(context, c);
         })
         .filter((c) => c !== undefined);
@@ -234,11 +204,8 @@ function emitCollectionValue(context: Context, node: Parser.SyntaxNode) {
   }
 }
 
-function emitExpression(context: Context, node: Parser.SyntaxNode): ast.PropertyValue {
-  assert.ok(
-    node.type === ResourceNode.Expression,
-    `received node type ${node.type}. expected ${ResourceNode.Expression}`
-  );
+export function emitExpression(context: Context, node: Parser.SyntaxNode): ast.PropertyValue {
+  assert.ok(node.type === ExpressionNodeValue, `received node type ${node.type}. expected ${ExpressionNodeValue}`);
   switch (node.firstChild.type) {
     case ExpressionNode.Literal:
       return emitLiteralValue(node.firstChild);
@@ -254,107 +221,17 @@ function emitExpression(context: Context, node: Parser.SyntaxNode): ast.Property
       return "";
     case ExpressionNode.Operation:
       return "";
-    case ExpressionNode.IndexedAccess:
-      return "";
-    case ExpressionNode.RawReference:
-      return "";
-    case ExpressionNode.Splat:
-      return "";
-    case ExpressionNode.Expression:
-      return "";
+    // case ExpressionNode.IndexedAccess:
+    //   return "";
+    // case ExpressionNode.RawReference:
+    //   return "";
+    // case ExpressionNode.Splat:
+    //   return "";
+    // case ExpressionNode.Expression:
+    //   return "";
     case ExpressionNode.Conditional:
       return "";
     default:
       assert.ok(false, `unknown expression type ${node.firstChild.type}`);
   }
-}
-
-function emitBlockResource(context: Context, node: Parser.SyntaxNode): ast.ResourceNode {
-  let type, name;
-  const namedNodes = [ResourceNode.ResourceType, ResourceNode.ResourceName];
-  node.namedChildren.forEach((c) => {
-    if (!namedNodes.includes(c.type as ResourceNode)) {
-      return;
-    }
-    const value = c.children.filter((c2) => c2.type === LiteralValue.TemplateLiteral);
-    c.type === ResourceNode.ResourceType && (type = value[0]?.text);
-    c.type === ResourceNode.ResourceName && (name = value[0]?.text);
-  });
-  assert.ok(type, "unknown type for resource");
-  assert.ok(name, "unknown name for resource");
-
-  const body = node.namedChildren.filter((n) => n.type === ResourceNode.Body)[0];
-
-  const resource: ast.ResourceNode = {
-    id: node.id,
-    name,
-    type,
-    properties: {},
-  };
-  body.namedChildren.forEach((child) => {
-    // TODO: handle for_each
-    resource.properties[child.namedChildren[0].text] = emitExpression(context, child.namedChildren[1]);
-  });
-  return resource;
-}
-
-function emitBlock(context: Context, node: Parser.SyntaxNode): Block {
-  // if (context.blockCache.has(node.id)) {
-  //   return context.blockCache.get(node.id);
-  // }
-  let iterator: Parser.SyntaxNode | null = node.parent;
-  let root = true;
-  while (iterator) {
-    if (getAllBlockTypes().includes(iterator.text)) {
-      root = false;
-      break;
-    }
-    iterator = iterator.parent;
-  }
-  const block = (() => {
-    switch (node.type) {
-      case BlockType.node_resource:
-        const block = emitBlockResource(context, node);
-        context.resources.push(block);
-        return block;
-      // case BlockType.provider:
-      // case BlockType.module:
-      // case BlockType.variable:
-      // case BlockType.output:
-      //   return undefined;
-      default:
-        assert.ok(false, `unhandled node type: ${node.type}`);
-    }
-  })();
-  // if (block) {
-  //   if (root) {
-  //     context.blockRoots.add(block.id);
-  //   }
-  //   context.blockCache.set(node.id, block);
-  // }
-  return block;
-}
-
-export async function compile(parser: Parser, sources: { [key: string]: string[] }) {
-  if (!sources[".tf"]) {
-    throw new Error("Input contains no .tf files. only .tf files are supported");
-  }
-  // const blockCache = new Map<number, Block>();
-  // const blockRoots = new Set<number>();
-
-  const gigaTf = sources[".tf"].reduce((prev, next) => {
-    return prev + fs.readFileSync(next, { encoding: "utf-8" });
-  }, "");
-
-  const tree = parser.parse(gigaTf);
-  const blocks = getAllBlockTypes()
-    .map((q) => `(${q}) @block`)
-    .map((q) => parser.getLanguage().query(q))
-    .map((q) => q.captures(tree.rootNode))
-    .flatMap((q) => q);
-  const context: Context = { node: undefined /*, blockCache, blockRoots*/, parser, resources: [] };
-  for (const block of blocks) {
-    emitBlock({ ...context, node: block.node }, block.node);
-  }
-  console.log(JSON.stringify(context.resources, undefined, 2));
 }
