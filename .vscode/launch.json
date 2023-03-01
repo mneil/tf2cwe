@@ -18,6 +18,22 @@
       ],
       "skipFiles": ["<node_internals>/**"],
       "args": ["bin/tf2cwe.ts", "test/terraform", "--language", "hcl"]
+    },
+    {
+      "name": "Test: Current Test",
+      "request": "launch",
+      "runtimeArgs": ["run-script", "test", "--", "--testPathPattern", "${fileBasenameNoExtension}"],
+      "runtimeExecutable": "npm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "Test: Unit Test",
+      "request": "launch",
+      "runtimeArgs": ["run-script", "test"],
+      "runtimeExecutable": "npm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
     }
   ]
 }

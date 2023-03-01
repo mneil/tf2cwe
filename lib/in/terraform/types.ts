@@ -1,5 +1,5 @@
 import Parser from "web-tree-sitter";
-import * as ast from "../ast";
+import * as ast from "../../ast";
 
 export interface Context {
   readonly node: Parser.SyntaxNode;

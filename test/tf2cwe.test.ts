@@ -6,6 +6,7 @@ function getTerraformFixture() {
 }
 describe("terraform HCL to CWE", () => {
   it("should pass", () => {
-    assert.equal(getTerraformFixture().blocks.filter((b) => b.is(ast.Type.Resource)).length, 1);
+    const resources = getTerraformFixture().blocks.filter((b) => b.is(ast.Type.Resource));
+    assert.equal(resources.length, 1);
   });
 });

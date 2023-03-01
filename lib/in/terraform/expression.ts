@@ -1,6 +1,6 @@
 import assert from "assert";
 import Parser from "web-tree-sitter";
-import * as ast from "../ast";
+import * as ast from "../../ast";
 import { Context } from "./types";
 
 const ExpressionNodeValue = "expression";

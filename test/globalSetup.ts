@@ -1,5 +1,5 @@
 import path from "path";
-import { compile, Language, ast } from "../lib";
+import { input, ast } from "../lib";
 
 interface Fixture {
   name: string;
@@ -7,7 +7,7 @@ interface Fixture {
 }
 
 export default async function setup() {
-  const fixtures = [{ input: "terraform", language: Language.Terraform }];
+  const fixtures = [{ input: "terraform", language: input.Language.Terraform }];
   global.FIXTURES = await Promise.all(
     fixtures
       .map((f) => {
@@ -15,7 +15,7 @@ export default async function setup() {
         return f;
       })
       .map((f) =>
-        compile(f).then((blocks) => {
+        input.compile(f).then((blocks) => {
           return { name: path.basename(f.input), blocks };
         })
       )
