@@ -29,6 +29,9 @@ export function emitBlockVariable(context: Context, node: Parser.SyntaxNode): as
   const variable = {
     id: node.id,
     name,
+    is: (type: ast.Type) => {
+      return type === ast.Type.Variable;
+    },
   } as any;
   body.namedChildren.forEach((child) => {
     if (child.type !== Variable.Attribute) {

@@ -66,7 +66,7 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
   return block;
 }
 
-export async function compile(parser: Parser, sources: { [key: string]: string[] }) {
+export function compile(parser: Parser, sources: { [key: string]: string[] }) {
   if (!sources[".tf"]) {
     throw new Error("Input contains no .tf files. only .tf files are supported");
   }
@@ -87,5 +87,5 @@ export async function compile(parser: Parser, sources: { [key: string]: string[]
   for (const block of blocks) {
     emitBlock({ ...context, node: block.node }, block.node);
   }
-  console.log(JSON.stringify(context.blocks, undefined, 2));
+  return context.blocks;
 }

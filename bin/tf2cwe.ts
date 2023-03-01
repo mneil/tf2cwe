@@ -6,4 +6,7 @@ function enumFromStringValue<T>(enm: { [s: string]: T }, value: string): T | und
 }
 const options = arg({ "--language": String }, { argv: process.argv });
 const language = enumFromStringValue(Language, options["--language"]) || Language.Terraform;
-compile({ input: options["_"].pop(), language });
+(async () => {
+  const blocks = await compile({ input: options["_"].pop(), language });
+  console.log(JSON.stringify(blocks, undefined, 2));
+})();

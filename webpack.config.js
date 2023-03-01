@@ -28,6 +28,7 @@ module.exports = (env, argv) => {
         delete pkg.scripts;
         delete pkg.devDependencies;
         delete pkg.overrides;
+        delete pkg.jest;
         fs.writeFileSync(path.resolve(__dirname, "dist", "package.json"), JSON.stringify(pkg, undefined, 2));
       }),
       new CopyPlugin({

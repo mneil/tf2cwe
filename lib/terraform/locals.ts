@@ -15,6 +15,9 @@ export function emitBlockLocal(context: Context, node: Parser.SyntaxNode): ast.N
 
   const local = {
     id: node.id,
+    is: (type: ast.Type) => {
+      return type === ast.Type.Config;
+    },
   } as any;
   body.namedChildren.forEach((child) => {
     if (child.type !== Local.Attribute) {

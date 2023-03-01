@@ -7,7 +7,7 @@
     "tf2cwe": "./bin/tf2cwe.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --runInBand --ci --no-cache",
     "postinstall": "scripts/postinstall",
     "build": "webpack",
     "build:wasm": "tree-sitter generate --no-bindings && tree-sitter build-wasm",
@@ -56,5 +56,25 @@
   },
   "overrides": {
     "tree-sitter-cli": "0.20.6"
+  },
+  "jest": {
+    "roots": [
+      "<rootDir>/test"
+    ],
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "ci": true,
+    "globalSetup": "./test/globalSetup.ts",
+    "automock": false,
+    "bail": true,
+    "maxConcurrency": 1,
+    "maxWorkers": 1,
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "testTimeout": 10000,
+    "verbose": true,
+    "detectLeaks": true,
+    "errorOnDeprecated": true
   }
 }

@@ -3,13 +3,24 @@ export type PropertyValue = Value | Value[] | Record<string, Value | Value[]>;
 
 export type Attribute = string | number;
 
+export enum Type {
+  Resource,
+  Output,
+  Variable,
+  Reference,
+  Config,
+}
+
 export interface Node {
   readonly id: number;
+  is: (type: Type) => boolean;
 }
+
+export interface Config extends Node {}
 
 // todo: remove Node from name
 export interface Reference extends Node {
-  readonly target: string | Node;
+  readonly target: string | number;
   readonly property: Attribute[];
 }
 

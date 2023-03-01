@@ -22,6 +22,9 @@ export function emitBlockResource(context: Context, node: Parser.SyntaxNode): as
     name,
     type,
     properties: {},
+    is: (type: ast.Type) => {
+      return type === ast.Type.Resource;
+    },
   };
   body.namedChildren.forEach((child) => {
     // TODO: handle for_each

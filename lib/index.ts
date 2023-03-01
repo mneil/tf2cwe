@@ -2,6 +2,7 @@ import path from "path";
 import Parser from "web-tree-sitter";
 import { walk } from "./input";
 import * as terraform from "./terraform";
+export * as ast from "./ast";
 
 const LANGUAGE_WASM = path.resolve(__dirname, "..", "tree-sitter-hcl.wasm");
 
@@ -39,8 +40,7 @@ export async function compile(options: CompileOptions) {
 
   switch (options.language) {
     case Language.Terraform:
-      terraform.compile(parser, sources);
-      break;
+      return await terraform.compile(parser, sources);
     default:
       break;
   }
