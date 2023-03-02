@@ -64,7 +64,6 @@
     "preset": "ts-jest",
     "testEnvironment": "node",
     "ci": true,
-    "globalSetup": "./test/globalSetup.ts",
     "automock": false,
     "bail": true,
     "maxConcurrency": 1,

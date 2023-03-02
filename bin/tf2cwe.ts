@@ -10,7 +10,7 @@ const language = enumFromStringValue(input.Language, options["--in"]) || input.L
 const outLanguage = enumFromStringValue(output.Language, options["--out"]) || output.Language.CloudTrail;
 
 (async () => {
-  const blocks = await input.compile({ input: options["_"].pop(), language });
-  await output.compile({ input: blocks, language: outLanguage });
-  console.log(JSON.stringify(blocks, undefined, 2));
+  const nodes = await input.compile({ input: options["_"].pop(), language });
+  await output.compile({ input: nodes, language: outLanguage });
+  console.log(JSON.stringify(nodes, undefined, 2));
 })();

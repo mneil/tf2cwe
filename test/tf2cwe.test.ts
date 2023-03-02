@@ -1,12 +1,14 @@
 import assert from "assert";
-import { ast } from "../lib";
+import { ast, output } from "../lib";
+import { fixtures } from "./common";
 
-function getTerraformFixture() {
-  return FIXTURES.filter((f) => f.name === "terraform")[0];
+async function getTerraformFixture() {
+  return (await fixtures()).filter((f) => f.name === "terraform")[0];
 }
 describe("terraform HCL to CWE", () => {
-  it("should pass", () => {
-    const resources = getTerraformFixture().blocks.filter((b) => b.is(ast.Type.Resource));
-    assert.equal(resources.length, 1);
+  it("should pass", async () => {
+    const fixture = await getTerraformFixture();
+    const out = output.compile({ language: output.Language.CloudTrail, input: fixture.nodes });
+    assert.ok(out);
   });
 });

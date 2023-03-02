@@ -17,7 +17,7 @@
         "--preserve-symlinks-main"
       ],
       "skipFiles": ["<node_internals>/**"],
-      "args": ["bin/tf2cwe.ts", "test/terraform", "--language", "hcl"]
+      "args": ["bin/tf2cwe.ts", "test/fixtures/terraform", "--language", "hcl"]
     },
     {
       "name": "Test: Current Test",
