@@ -8,7 +8,7 @@ async function getTerraformFixture() {
 describe("terraform HCL to CWE", () => {
   it("should pass", async () => {
     const fixture = await getTerraformFixture();
-    const out = output.compile({ language: output.Language.CloudTrail, input: fixture.nodes });
+    const out = await output.compile({ language: output.Language.CloudTrail, input: fixture.nodes });
     assert.ok(out);
   });
 });
