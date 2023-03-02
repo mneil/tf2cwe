@@ -1,13 +1,23 @@
+import path from "path";
 import assert from "assert";
 import fs from "fs";
 import Parser from "web-tree-sitter";
-// import * as adk from "./vendor/adk";
 import * as ast from "../../ast";
+import { walk } from "../input";
 import { Context } from "./types";
-
 import { emitBlockResource } from "./resource";
 import { emitBlockVariable } from "./variable";
 import { emitBlockLocal } from "./locals";
+
+let LANGUAGE_WASM: string;
+// @ts-ignore
+if (typeof BUILD !== "undefined") {
+  // this is the location of the language wasm when built with webpack
+  LANGUAGE_WASM = path.resolve(__dirname, "..", "tree-sitter-hcl.wasm");
+} else {
+  // location of language wasm when running ts-node
+  LANGUAGE_WASM = path.resolve(__dirname, "..", "..", "..", "tree-sitter-hcl.wasm");
+}
 
 enum BlockType {
   Resource = "resource",
@@ -66,7 +76,25 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
   return block;
 }
 
-export function compile(parser: Parser, sources: { [key: string]: string[] }) {
+const createParser = async (): Promise<Parser> => {
+  await Parser.init();
+  const parser = new Parser();
+  const language = await Parser.Language.load(LANGUAGE_WASM);
+  parser.setLanguage(language);
+  return parser;
+};
+
+export async function compile(input: string) {
+  if (!input) {
+    throw new Error("tf2cwe compile requires an input");
+  }
+
+  const parser = await createParser();
+  const sources = await walk(input, {
+    depth: 0,
+    extensions: [".tf", ".tfvars"],
+  });
+
   if (!sources[".tf"]) {
     throw new Error("Input contains no .tf files. only .tf files are supported");
   }

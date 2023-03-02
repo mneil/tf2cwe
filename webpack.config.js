@@ -43,6 +43,9 @@ module.exports = (env, argv) => {
           },
         ],
       }),
+      new webpack.DefinePlugin({
+        BUILD: true,
+      }),
     ],
     optimization: {
       minimize: argv.mode === "development" ? false : true,
@@ -79,7 +82,7 @@ module.exports = (env, argv) => {
     },
     externals: [
       {
-        "../lib/index": "require('../lib/index')",
+        "../lib": "require('../lib/index')",
       },
     ],
 
