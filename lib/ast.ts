@@ -32,7 +32,8 @@ export interface Output extends Node {
 
 export interface Resource extends Node {
   readonly name: string;
-  readonly type: string;
+  readonly service: string;
+  readonly product: string;
   readonly properties: Record<string, PropertyValue>;
 }
 

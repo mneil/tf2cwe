@@ -1,0 +1,26 @@
+#!/bin/bash
+#
+# Get the latest terraform names_data for converting resource types to service::product values
+# Use this script to generate new mappings for hcl resources
+#
+set -e
+
+echo "cloning terraform repo. we need some of this data..."
+DIR=$PWD
+mkdir -p $DIR/lib/vendor/terraform
+cd $DIR/lib/vendor/terraform
+git init
+git config core.sparsecheckout true
+echo "names/names_data.csv" > .git/info/sparse-checkout
+git remote add -f origin git@github.com:hashicorp/terraform-provider-aws.git || true
+git pull --depth 1 origin main
+rm -rf .git
+
+# Generate grammar for tf service types
+cd $DIR
+echo "generating hcl grammar for tf services automatically from terraform repo"
+node --no-lazy \
+  -r ts-node/register/transpile-only \
+  --preserve-symlinks \
+  --preserve-symlinks-main \
+  $DIR/scripts/terraform.ts

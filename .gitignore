@@ -201,3 +201,4 @@ tsconfig.tsbuildinfo
 !test/terraform/dev.tfvars
 lib/vendor
 !lib/out
+lib/data

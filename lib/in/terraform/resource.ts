@@ -9,18 +9,24 @@ enum Resource {
 }
 
 export function emitBlockResource(context: Context, node: Parser.SyntaxNode): ast.Resource {
-  const type = node.namedChildren[1]?.namedChildren[1]?.text;
-  const name = node.namedChildren[2]?.namedChildren[1]?.text;
+  const type = node.namedChildren[0]?.namedChildren[1]?.text;
+  const service = node.namedChildren[0]?.namedChildren[1].firstChild.type;
+  const name = node.namedChildren[1]?.namedChildren[1]?.text;
 
   assert.ok(type, "unknown type for resource");
+  assert.ok(service, "unknown service for resource");
   assert.ok(name, "unknown name for resource");
+
+  const regex = new RegExp(`^aws_[${service}_]?`);
+  const product = type.replace(regex, "");
 
   const body = node.namedChildren.filter((n) => n.type === Resource.Body)[0];
 
   const resource: ast.Resource = {
     id: node.id,
     name,
-    type,
+    service,
+    product,
     properties: {},
     is: (type: ast.Type) => {
       return type === ast.Type.Resource;
