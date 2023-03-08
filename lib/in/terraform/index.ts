@@ -20,7 +20,7 @@ if (typeof BUILD !== "undefined") {
 }
 
 enum BlockType {
-  Resource = "resource",
+  Resource = "node_resource",
   Provider = "provider",
   Module = "module",
   Output = "output",
@@ -47,11 +47,12 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
     iterator = iterator.parent;
   }
   const block = (() => {
+    if (node.firstChild.type === BlockType.Resource) {
+      const resource = emitBlockResource(context, node.firstChild);
+      context.blocks.push(resource);
+      return resource;
+    }
     switch (node.firstNamedChild.text) {
-      case BlockType.Resource:
-        const resource = emitBlockResource(context, node);
-        context.blocks.push(resource);
-        return resource;
       case BlockType.Variable:
         const variable = emitBlockVariable(context, node);
         context.blocks.push(variable);

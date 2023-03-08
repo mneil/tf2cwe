@@ -17,7 +17,22 @@
         "--preserve-symlinks-main"
       ],
       "skipFiles": ["<node_internals>/**"],
-      "args": ["bin/tf2cwe.ts", "test/fixtures/terraform", "--language", "hcl"]
+      "args": ["bin/tf2cwe.ts", "test/fixtures/terraform", "--in", "hcl"]
+    },
+    {
+      "name": "Scripts: terraform.js",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--no-lazy",
+        "-r",
+        "ts-node/register/transpile-only",
+        "--preserve-symlinks",
+        "--preserve-symlinks-main"
+      ],
+      "skipFiles": ["<node_internals>/**"],
+      "args": ["scripts/terraform.ts"]
     },
     {
       "name": "Test: Current Test",

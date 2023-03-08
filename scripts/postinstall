@@ -1,18 +1,19 @@
 #!/bin/bash
+set -e
 
 DIR=$PWD
 
-# copy adk vendor libs
-cd $DIR
-mkdir -p $DIR/lib/vendor/adk
-cp -r $DIR/node_modules/@zorse/adk/src/core/* $DIR/lib/vendor/adk
+# Do the needful with terraform
+$DIR/scripts/terraform
 
 # generate tf grammar wasm
 # must have DOCKER for this to work
-cd $DIR
 npx tree-sitter generate --no-bindings
 cp $DIR/node_modules/tree-sitter-hcl/src/scanner.cc src/scanner.cc
+echo "building hcl wasm tree-sitter parser"
 npx tree-sitter build-wasm
 
-cd $DIR
+# Copy tree-sitter.wasm to root of the project for playground
 cp node_modules/web-tree-sitter/tree-sitter.wasm .
+
+

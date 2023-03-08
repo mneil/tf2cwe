@@ -36,7 +36,6 @@
     "@cdktf/provider-docker": "6.0.0",
     "@types/jest": "^29.4.0",
     "@types/node": "^18.13.0",
-    "@zorse/adk": "github:zorse-lang/adk#05603fe58a382e259707974dd6d58dcc0a2a2832",
     "arg": "^5.0.2",
     "cdktf": "^0.15.4",
     "constructs": "^10.1.250",

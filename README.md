@@ -5,6 +5,14 @@ HCL into other formats.
 
 The main goal of this project is to use that AST to produce "predictive alerts" that mock AWS CloudTrail events.
 
+## Getting Started
+
+Clone the repository and install the dependencies with `npm i`. A postinstall script will set up and build quite a few dependencies which takes a while. After this is finished you can parse hcl.
+
+```
+npx ts-node bin/tf2cwe.ts test/fixtures/terraform
+```
+
 ## What Can I Do With This
 
 ### Convert 1 Format To Another
