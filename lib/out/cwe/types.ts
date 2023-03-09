@@ -7,6 +7,10 @@ export enum UserAgent {
   AWSCLI = "aws-cli/1.3.23 Python/2.7.6 Linux/2.6.18-164.el5",
 }
 
+export enum Partition {
+  Aws = "aws",
+}
+
 export enum EventType {
   AwsApiCall,
   AwsServiceEvent,

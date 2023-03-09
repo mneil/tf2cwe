@@ -1,0 +1,15 @@
+#!/bin/bash
+#
+# Get the latest API spec information from botocore
+#
+set -e
+
+echo "Downloading AWS API Spec"
+./scripts/git "" boto/botocore \
+  ad6fd9e3248f4c2abb6b7c2697884ea6b0f5fd6e \
+  botocore/data
+
+echo "Downloading AWS IAM Service Reference"
+./scripts/git aws-policy-generator Torsitano/AwsPolicyGenerator-TS \
+  b5cf5906dd5ee0cef59d2f02447a01cec61a3fde \
+  lib/serviceDefinitions

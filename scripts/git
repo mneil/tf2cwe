@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# Example usage
+# ./git terraform hashicorp/terraform-provider-aws \
+#     d62c51bb2f043eee5ab85dffae0de9d8bbdc67e2 \
+#     folder1 \
+#     folder2
+#
+
+CWD=$PWD
+DIR=$CWD/lib/vendor/$1
+[[ ! -z $1 ]] && rm -rf $DIR
+REPO=$2
+SHA=$3
+shift
+shift
+shift
+FILES=($@)
+
+echo "pulling ${FILES[@]} from $REPO into $DIR"
+
+mkdir -p $DIR
+cd $DIR
+git init
+git config core.sparsecheckout true
+echo "" > .git/info/sparse-checkout
+for i in ${FILES[@]}; do echo "$i" >> .git/info/sparse-checkout; done
+git remote add origin https://github.com/$REPO.git
+git pull -s theirs --depth 1 origin $SHA
+rm -rf .git
+
+cd $CWD

@@ -11,6 +11,6 @@ const outLanguage = enumFromStringValue(output.Language, options["--out"]) || ou
 
 (async () => {
   const nodes = await input.compile({ input: options["_"].pop(), language });
-  await output.compile({ input: nodes, language: outLanguage });
-  // console.log(JSON.stringify(nodes, undefined, 2));
+  const out = await output.compile({ input: nodes, language: outLanguage });
+  console.log(JSON.stringify(out, undefined, 2));
 })();
