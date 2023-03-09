@@ -7,7 +7,9 @@
     "tf2cwe": "./bin/tf2cwe.js"
   },
   "scripts": {
-    "test": "jest --runInBand --ci --no-cache",
+    "test": "jest --runInBand --ci --no-cache --detectLeaks",
+    "format": "prettier --write --config package.json lib",
+    "format:check": "npm run format -- --check --no-write",
     "postinstall": "scripts/postinstall",
     "build": "webpack",
     "build:wasm": "tree-sitter generate --no-bindings && tree-sitter build-wasm",
@@ -42,6 +44,7 @@
     "copy-webpack-plugin": "^11.0.0",
     "jest": "^29.4.2",
     "nan": "^2.17.0",
+    "prettier": "^2.8.4",
     "tree-sitter": "^0.20.1",
     "tree-sitter-cli": "0.20.6",
     "tree-sitter-hcl": "github:MichaHoffmann/tree-sitter-hcl#0ff887f2a60a147452d52db060de6b42f42f1441",
@@ -74,5 +77,21 @@
     "verbose": true,
     "detectLeaks": true,
     "errorOnDeprecated": true
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "useTabs": false,
+    "trailingComma": "all",
+    "semi": true,
+    "singleQuote": false,
+    "printWidth": 120,
+    "overrides": [
+      {
+        "files": "*.ts",
+        "options": {
+          "parser": "typescript"
+        }
+      }
+    ]
   }
 }

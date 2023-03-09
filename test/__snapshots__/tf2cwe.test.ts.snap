@@ -1,0 +1,40 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`terraform HCL to CWE should pass 1`] = `
+{
+  "account": "123456789012",
+  "detail": {
+    "awsRegion": "us-east-1",
+    "eventName": "CreateBucket",
+    "eventSource": "ec2.amazonaws.com",
+    "eventTime": Any<String>,
+    "eventType": 0,
+    "eventVersion": "1.08",
+    "requestID": "9D767BCC3B4E7487",
+    "requestParameters": {},
+    "responseElements": null,
+    "sourceIPAddress": "100.100.100.100",
+    "userAgent": "signin.amazonaws.com",
+    "userIdentity": {
+      "accountId": "123456789012",
+      "arn": "arn:aws:iam::123456789012:root",
+      "principalId": "123456789012",
+      "sessionContext": {
+        "attributes": {
+          "creationDate": Any<String>,
+          "mfaAuthenticated": "false",
+        },
+      },
+      "type": 0,
+    },
+  },
+  "detail-type": "AWS API Call via CloudTrail",
+  "region": "us-east-1",
+  "resources": [
+    "arn:aws:ec2:us-east-1:123456789012:instance/app_server",
+  ],
+  "source": "aws.ec2",
+  "time": Any<String>,
+  "version": "0",
+}
+`;

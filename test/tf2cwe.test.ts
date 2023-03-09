@@ -1,5 +1,4 @@
-import assert from "assert";
-import { ast, output } from "../lib";
+import { output } from "../lib";
 import { fixtures } from "./common";
 
 async function getTerraformFixture() {
@@ -9,6 +8,22 @@ describe("terraform HCL to CWE", () => {
   it("should pass", async () => {
     const fixture = await getTerraformFixture();
     const out = await output.compile({ language: output.Language.CloudTrail, input: fixture.nodes });
-    assert.ok(out);
+    for(const resource of out) {
+      delete resource.id
+      delete resource.detail.eventID
+    }
+    expect(out[0]).toMatchSnapshot({
+      time:  expect.any(String),
+      detail: {
+        userIdentity: {
+          sessionContext: {
+            attributes: {
+              creationDate: expect.any(String),
+            }
+          }
+        },
+        eventTime: expect.any(String),
+      }
+    });
   });
 });

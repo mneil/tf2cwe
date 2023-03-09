@@ -5,6 +5,8 @@ DIR=$PWD
 
 # Do the needful with terraform
 $DIR/scripts/terraform
+# Do the needful with aws api stuff
+$DIR/scripts/aws
 
 # generate tf grammar wasm
 # must have DOCKER for this to work

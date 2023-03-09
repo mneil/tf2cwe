@@ -68,7 +68,7 @@ enum ExpressionNode {
 function emitLiteralValue(node: Parser.SyntaxNode) {
   assert.ok(
     node.type === ExpressionNode.Literal,
-    `received node type ${node.type}. expected ${ExpressionNode.Literal}`
+    `received node type ${node.type}. expected ${ExpressionNode.Literal}`,
   );
   const firstChild = node.firstChild;
   switch (firstChild.type) {
@@ -90,7 +90,7 @@ function emitLiteralValue(node: Parser.SyntaxNode) {
 function emitTemplateExpression(context: Context, value: Parser.SyntaxNode): string {
   assert.ok(
     value.type === ExpressionNode.TemplateExpression,
-    `received node type ${value.type}. expected ${ExpressionNode.TemplateExpression}`
+    `received node type ${value.type}. expected ${ExpressionNode.TemplateExpression}`,
   );
   switch (value.firstChild.type) {
     case TemplateExpression.HereDocTemplate:
@@ -114,7 +114,7 @@ function emitTemplateExpression(context: Context, value: Parser.SyntaxNode): str
 function emitTemplateInterpolation(context: Context, node: Parser.SyntaxNode) {
   assert.ok(
     node.type === TemplateExpression.Interpolation,
-    `received node type ${node.type}. expected ${TemplateExpression.Interpolation}`
+    `received node type ${node.type}. expected ${TemplateExpression.Interpolation}`,
   );
   const expression = node.namedChildren.filter((n) => n.type === ExpressionNodeValue)[0];
   return emitExpression(context, expression);
@@ -124,7 +124,7 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
   // TODO: need to implement more agnositic resolvers in the AST
   assert.ok(
     node.firstNamedChild.type === ExpressionNode.VariableExpression,
-    `received node type ${node.firstNamedChild.type}. expected ${ExpressionNode.VariableExpression}`
+    `received node type ${node.firstNamedChild.type}. expected ${ExpressionNode.VariableExpression}`,
   );
   let target = context.node.id;
   const is = (type: ast.Type) => {
