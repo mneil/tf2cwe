@@ -12,25 +12,42 @@ export enum Partition {
 }
 
 export enum EventType {
-  AwsApiCall,
-  AwsServiceEvent,
-  AwsConsoleAction,
-  AwsConsoleSignIn,
-  AwsCloudTrailInsight,
+  ApiCall = "AwsApiCall",
+  ServiceEvent = "AwsServiceEvent",
+  ConsoleAction = "AwsConsoleAction",
+  ConsoleSignIn = "AwsConsoleSignIn",
+  Stream = "AwsCloudTrailInsight",
 }
 
 export const EVENT_VERSION = "1.08";
 
 export enum UserIdentityType {
-  Root,
-  IAMUser,
-  AssumedRole,
-  Role,
-  FederatedUser,
-  Directory,
-  AWSAccount,
-  AWSService,
-  Unknown,
+  Root = "Root",
+  User = "IAMUser",
+  Assumed = "AssumedRole",
+  Role = "Role",
+  Federated = "FederatedUser",
+  Directory = "Directory",
+  Account = "AWSAccount",
+  Service = "AWSService",
+  Unknown = "Unknown",
+  SAMLUser = "SAMLUser",
+  WebIdentityUser = "WebIdentityUser",
+}
+
+export interface SessionContext {
+  attributes?: {
+    mfaAuthenticated?: "string";
+    creationDate?: "string";
+  };
+  sessionIssuer?: {
+    type?: string;
+    principalId?: string;
+    arn?: string;
+    accountId?: string;
+    userName?: string;
+  };
+  webIdFederationData?: Record<string, any>;
 }
 
 /**
@@ -47,6 +64,7 @@ export interface UserIdentity {
   invokedBy?: string;
   sessionIssuer?: string;
   webIdFederationData?: Record<string, string | object>;
+  identityProvider?: string;
 }
 
 /**

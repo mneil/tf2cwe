@@ -20,11 +20,55 @@ export enum Type {
   Config,
 }
 /**
+ * The owner of the node
+ */
+export enum IdentityType {
+  Root = "Root",
+  User = "User",
+  Assumed = "Assumed",
+  Role = "Role",
+  Federated = "Federated",
+  Directory = "Directory",
+  Account = "Account",
+  Service = "Service",
+  Unknown = "Unknown",
+}
+
+export interface IdentityDetails {
+  name: string;
+  type: string;
+  principal: string;
+  identityProvider: string;
+}
+
+export interface Identity {
+  readonly type: IdentityType;
+  readonly details?: IdentityDetails;
+}
+/**
+ * The origination location of the node
+ */
+export enum EventOrigin {
+  ApiCall = "ApiCall",
+  ServiceEvent = "ServiceEvent",
+  ConsoleAction = "ConsoleAction",
+  ConsoleSignIn = "ConsoleSignIn",
+  Stream = "Stream",
+}
+
+/**
  * Config Node. Holds configuration data from the parsed source.
  * This is concrete or reference that that the user intends
  * to inject into the output into nodes that are configurable.
  */
-export interface Config extends Node {}
+export interface Config extends Node {
+  account: string;
+  region: string;
+  identity?: Identity;
+  partition?: string;
+  origin?: EventOrigin;
+  userAgent?: string;
+}
 
 /**
  * Reference Node. Holds a reference to another node
@@ -83,6 +127,8 @@ export interface Resource extends Node {
    * Properties of the resource
    */
   readonly properties: Record<string, PropertyValue>;
+  readonly config: Config;
+
   /**
    * Action being taken on this resource. For example, for ec2,
    * it could be RunInstances, TerminateInstances, etc...

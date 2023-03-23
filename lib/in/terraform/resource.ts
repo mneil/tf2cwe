@@ -22,8 +22,23 @@ export function emitBlockResource(context: Context, node: Parser.SyntaxNode): as
 
   const body = node.namedChildren.filter((n) => n.type === Resource.Body)[0];
 
+  // TODO: This needs to come from config blocks or from individual resources
+  const config = {
+    id: 0,
+    is: (type: ast.Type) => {
+      return type === ast.Type.Config;
+    },
+    account: "123456789012",
+    region: "us-east-1",
+    userAgent: "bla",
+    identity: { type: ast.IdentityType.User },
+    eventType: ast.EventOrigin.ApiCall,
+    partition: "aws",
+  };
+
   const resource: ast.Resource = {
     id: node.id,
+    config,
     name,
     service,
     product,
