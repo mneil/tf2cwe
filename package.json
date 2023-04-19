@@ -47,6 +47,7 @@
     "prettier": "^2.8.4",
     "tree-sitter": "^0.20.1",
     "tree-sitter-cli": "0.20.6",
+    "tree-sitter-go": "^0.19.1",
     "tree-sitter-hcl": "github:MichaHoffmann/tree-sitter-hcl#0ff887f2a60a147452d52db060de6b42f42f1441",
     "ts-jest": "^29.0.5",
     "ts-loader": "^9.4.2",

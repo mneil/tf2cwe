@@ -15,6 +15,14 @@ cp $DIR/node_modules/tree-sitter-hcl/src/scanner.cc src/scanner.cc
 echo "building hcl wasm tree-sitter parser"
 npx tree-sitter build-wasm
 
+# generate go wasm parser
+cd $DIR/node_modules/tree-sitter-go
+npx tree-sitter generate --no-bindings
+echo "building go wasm tree-sitter parser"
+npx tree-sitter build-wasm
+mv tree-sitter-go.wasm $DIR
+cd $DIR
+
 # Copy tree-sitter.wasm to root of the project for playground
 cp node_modules/web-tree-sitter/tree-sitter.wasm .
 

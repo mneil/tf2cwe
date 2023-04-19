@@ -1,5 +1,9 @@
 /**
  * Code generator for terraform parser
+ *
+ * Reads names_data.csv from terraform AWS Source provider and uses it to create a
+ * tree-sitter grammar that contains alias so we can map TF resources back to
+ * AWS <service> <product> pairs.
  */
 import assert from "assert";
 import fs from "fs";
@@ -80,9 +84,10 @@ function unsupportedNodeType(columns: string[]) {
   return false;
 }
 
-function expandPrefix(input: string) {
+function expandPrefix(input: string): string[] {
   if (TF_REGEX_MAPPING.has(input)) {
     const value = TF_REGEX_MAPPING.get(input);
+    assert.ok(value)
     TF_REGEX_MAPPING.delete(input);
     return value;
   }
@@ -97,8 +102,8 @@ function expandPrefix(input: string) {
 }
 
 function toGrammar(prefixes: Map<string, string>) {
-  const gigaRule = [];
-  const rules = [];
+  const gigaRule: string[] = [];
+  const rules: string[] = [];
   const serviceCount = {};
   for (const [value, service] of prefixes.entries()) {
     if (!serviceCount[service]) {
@@ -120,7 +125,7 @@ function toGrammar(prefixes: Map<string, string>) {
 function writeGrammar(text: string) {
   // This writing to file is pretty naive. In the future we will want to support
   // replacing blocks of code rather than the when end
-  const grammarPath = path.resolve(__dirname, "..", "grammar.js");
+  const grammarPath = path.resolve(__dirname, "..", "..", "grammar.js");
   const grammar = fs.readFileSync(grammarPath, { encoding: "utf-8" });
 
   const start = grammar.indexOf("// BEGIN AUTO-GENERATED FROM ./scripts/terraform");
@@ -138,7 +143,7 @@ function writeGrammar(text: string) {
 }
 
 async function parseNamesDataForResources() {
-  const names = fs.readFileSync(path.join(__dirname, "..", "lib", "vendor", "terraform", "names", "names_data.csv"), {
+  const names = fs.readFileSync(path.join(__dirname, "..", "..", "lib", "vendor", "terraform", "names", "names_data.csv"), {
     encoding: "utf-8",
   });
   const rows = names.split("\n");

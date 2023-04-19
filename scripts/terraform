@@ -7,12 +7,13 @@ set -e
 
 echo "cloning terraform repo. we need some of this data..."
 ./scripts/git terraform hashicorp/terraform-provider-aws \
-  d62c51bb2f043eee5ab85dffae0de9d8bbdc67e2 \
-  names/names_data.csv
+  4e5e50476505a740604f7bdd070d3cd45ec2fe37 \
+  names/names_data.csv \
+  internal/service
 
 echo "generating hcl grammar for tf services automatically from terraform repo"
 node --no-lazy \
   -r ts-node/register/transpile-only \
   --preserve-symlinks \
   --preserve-symlinks-main \
-  $PWD/scripts/terraform.ts
+  $PWD/scripts/tf/grammar.ts
