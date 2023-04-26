@@ -1,3 +1,4 @@
+/// <reference path="node_modules/tree-sitter-cli/dsl.d.ts" />
 const hcl = require("tree-sitter-hcl/grammar");
 const PREC = {
   unary: 7,

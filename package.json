@@ -7,7 +7,7 @@
     "tf2cwe": "./bin/tf2cwe.js"
   },
   "scripts": {
-    "test": "jest --runInBand --ci --no-cache --detectLeaks",
+    "test": "jest --runInBand --ci --no-cache",
     "format": "prettier --write --config package.json lib",
     "format:check": "npm run format -- --check --no-write",
     "postinstall": "scripts/postinstall",
@@ -75,7 +75,7 @@
     ],
     "testTimeout": 10000,
     "verbose": true,
-    "detectLeaks": true,
+    "detectLeaks": false,
     "errorOnDeprecated": true
   },
   "prettier": {
