@@ -1,62 +1,25 @@
 /// <reference path="node_modules/tree-sitter-cli/dsl.d.ts" />
-const hcl = require("tree-sitter-hcl/grammar");
-const PREC = {
-  unary: 7,
-  binary_mult: 6,
-  binary_add: 5,
-  binary_ord: 4,
-  binary_comp: 3,
-  binary_and: 2,
-  binary_or: 1,
-
-  // if possible prefer string_literals to quoted templates
-  string_lit: 2,
-  quoted_template: 1,
-}
-module.exports = grammar(hcl, {
+module.exports = grammar(require("tree-sitter-hcl/grammar"), {
   name: "hcl",
 
   rules: {
-    block: ($, original) => choice(
-      original,
-      $.node_resource
-    ),
+    block: ($, original) => choice(original, $.node_resource),
 
-    body: ($, original) => repeat1(
-      prec.right(
-        choice(
-          original,
-          $.for_each
-        )
-      )
-    ),
+    body: ($, original) => choice(original, $.for_each),
 
-    for_each: $ => seq(
-      $.for_each_identifier,
-      '=',
-      $.expression,
-    ),
+    for_each: ($) => seq("for_each", "=", $.expression),
 
-    for_each_identifier: ($) => "for_each",
+    node_resource: ($) =>
+      seq(
+        "resource",
+        $.resource_type,
+        alias($.string_lit, "resource_name"),
+        $.block_start,
+        optional($.body),
+        $.block_end,
+      ),
 
-
-    node_resource: ($) => seq(
-      "resource",
-      $.resource_type,
-      alias($.string_lit, $.resource_name),
-      $.block_start,
-      optional($.body),
-      $.block_end,
-    ),
-
-    resource_type: ($) => prec(PREC.string_lit, seq(
-      $.quoted_template_start,
-      optional($.resource_service_map),
-      $.quoted_template_end,
-    )),
-
-    resource_name: ($) => $.string_lit,
-
+    resource_type: ($) => seq($.quoted_template_start, optional($.resource_service_map), $.quoted_template_end),
 
     // STOP. Do not edit below this line. The rest of this file is auto-generated.
     // BEGIN AUTO-GENERATED FROM ./scripts/terraform
@@ -709,6 +672,5 @@ module.exports = grammar(hcl, {
 
 
     // END AUTO-GENERATED FROM ./scripts/terraform
-
   },
 });

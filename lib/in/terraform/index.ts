@@ -1,6 +1,6 @@
 import path from "path";
 import assert from "assert";
-import fs, { read } from "fs";
+import fs from "fs";
 import Parser from "web-tree-sitter";
 import * as ast from "../../ast";
 import { walk } from "../input";
