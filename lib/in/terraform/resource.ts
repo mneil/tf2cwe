@@ -11,7 +11,7 @@ enum Resource {
 export function emitBlockResource(context: Context, node: Parser.SyntaxNode): ast.Resource {
   const type = node.namedChildren[0]?.namedChildren[1]?.text;
   const service = node.namedChildren[0]?.namedChildren[1].firstChild.type;
-  const name = node.namedChildren[1]?.namedChildren[1]?.text;
+  const name = node.children[2]?.namedChildren[1]?.text;
 
   assert.ok(type, "unknown type for resource");
   assert.ok(service, "unknown service for resource");

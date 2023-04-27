@@ -57,8 +57,6 @@ The AST is written in a way as to abstract support of different CSPs (Cloud Serv
 |                 |              | mappings       |                     |            |
 | dependencies    |              | dependencies   | dependencies        |            |
 |                 |              |                | module              |            |
-|                 |              |                |                     |            |
-|                 |              |                |                     |            |
 |                 |              |                | existing resources  |            |
 |                 |              |                | child resource      |            |
 |                 |              |                | extension resources |            |

@@ -33,9 +33,6 @@ function getAllBlockTypes(): string[] {
 }
 
 function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
-  // if (context.blockCache.has(node.id)) {
-  //   return context.blockCache.get(node.id);
-  // }
   assert.ok(node.type === "block", `received node type ${node.type}. expected block`);
   let iterator: Parser.SyntaxNode | null = node.parent;
   let root = true;
@@ -68,24 +65,23 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
         assert.ok(false, `unhandled node type: ${node.type}`);
     }
   })();
-  // if (block) {
-  //   if (root) {
-  //     context.blockRoots.add(block.id);
-  //   }
-  //   context.blockCache.set(node.id, block);
-  // }
   return block;
 }
 
 const createParser = async (): Promise<Parser> => {
-  await Parser.init();
+  await Parser.init({
+    locateFile: () => {
+      return `file:${process.cwd()}/tree-sitter.wasm`;
+    },
+  });
   const parser = new Parser();
-  const language = await Parser.Language.load(LANGUAGE_WASM);
+  const lang = fs.readFileSync(LANGUAGE_WASM);
+  const language = await Parser.Language.load(lang);
   parser.setLanguage(language);
   return parser;
 };
 
-export async function compile(input: string) {
+export async function compile(input: string): Promise<ast.Node[]> {
   if (!input) {
     throw new Error("tf2cwe compile requires an input");
   }
@@ -99,8 +95,6 @@ export async function compile(input: string) {
   if (!sources[".tf"]) {
     throw new Error("Input contains no .tf files. only .tf files are supported");
   }
-  // const blockCache = new Map<number, Block>();
-  // const blockRoots = new Set<number>();
 
   const gigaTf = sources[".tf"].reduce((prev, next) => {
     return prev + fs.readFileSync(next, { encoding: "utf-8" });
