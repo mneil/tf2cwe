@@ -106,9 +106,36 @@ export async function compile(input: string): Promise<ast.Node[]> {
     .query("(block) @block")
     .captures(tree.rootNode)
     .flatMap((q) => q);
-  const context: Context = { node: undefined /*, blockCache, blockRoots*/, parser, blocks: [] };
+  const context: Context = {
+    node: undefined,
+    parser,
+    blocks: [],
+    nodes: new Map(),
+    encode: (node: ast.Node) => {
+      if (node.is(ast.Type.Reference)) {
+        const ref = node as ast.Reference;
+        return `@@{{${ref.id}:${ref.property.join("")}}}@@`;
+      } else {
+        throw new Error(`unhandled node type: ${node.id}`);
+      }
+    },
+    resolve: (chunk: string) => {
+      return chunk.replace(/@@{{(.+?)}}@@/g, (match, p1) => {
+        const [id] = p1.split(":");
+        const node = context.nodes.get(Number(id));
+        if (!node) {
+          throw new Error(`unable to find node with id ${id}`);
+        }
+        node.resolve?.apply(node);
+        return `${node}`;
+      });
+    },
+  };
   for (const block of blocks) {
     emitBlock({ ...context, node: block.node }, block.node);
+  }
+  for (const block of context.blocks) {
+    block.resolve?.apply(block);
   }
   return context.blocks;
 }

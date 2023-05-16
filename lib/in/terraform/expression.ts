@@ -1,4 +1,5 @@
 import assert from "assert";
+import { get } from "lodash";
 import Parser from "web-tree-sitter";
 import * as ast from "../../ast";
 import { Context } from "./types";
@@ -132,9 +133,15 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
   };
   switch (node.firstNamedChild.text) {
     case NamedValue.Variable:
-      return { is, id: node.id, target: "variable", property: [node.lastNamedChild.lastNamedChild.text] };
+      return {
+        is,
+        resolve: null,
+        id: node.id,
+        target: "variable",
+        property: [node.lastNamedChild.lastNamedChild.text],
+      };
     case NamedValue.Local:
-      return { is, id: node.id, target: "local", property: [node.lastNamedChild.lastNamedChild.text] };
+      return { is, resolve: null, id: node.id, target: "local", property: [node.lastNamedChild.lastNamedChild.text] };
     case NamedValue.Module:
       const moduleProperty = node.namedChildren
         .map((node, index) => {
@@ -146,7 +153,7 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           return node.firstNamedChild.text;
         })
         .filter((c) => c !== undefined);
-      return { is, id: node.id, target: "module", property: moduleProperty };
+      return { is, resolve: null, id: node.id, target: "module", property: moduleProperty };
     case NamedValue.Data:
       // TODO: have to figure out how to make this work and turn into AST
       assert.ok(false, "data source is unsupported at this time");
@@ -158,10 +165,11 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
       // TODO: allow configuration of the workspace? Can we infer it?
       return "";
     case NamedValue.Count:
-      return { is, id: node.id, target, property: ["_meta_", "index"] };
+      return { is, resolve: null, id: node.id, target, property: ["_meta_", "index"] };
     case NamedValue.Each:
       return {
         is,
+        resolve: null,
         id: node.id,
         target,
         property: ["_meta_", "each", node.lastNamedChild.firstNamedChild.text],
@@ -173,17 +181,41 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           return node.text;
         })
         .filter((c) => c !== undefined);
-      return { is, id: node.id, target, property: selfProperty };
+      return { is, resolve: null, id: node.id, target, property: selfProperty };
     default:
       // resource reference?
       if (node.namedChildCount === 1) {
         // local node reference
-        return { is, id: node.id, target, property: [node.firstNamedChild.text] };
+        return { is, resolve: null, id: node.id, target, property: [node.firstNamedChild.text] };
       }
       const property = node.namedChildren.map((node) => {
         return node.text;
       });
-      return { is, id: node.id, target, property };
+      const out = {
+        is,
+        resolve: function () {
+          const resource = context.blocks.find((b) => {
+            return b.is(ast.Type.Resource) && (b as ast.Resource).name === this.property[0];
+          });
+          const accessor = this.property.slice(1).join("").replace(/^\./, "");
+          const concrete = get(resource, accessor);
+          this.toContextString = () => concrete;
+        },
+        id: node.id,
+        target,
+        property,
+        toContextString: function () {
+          return context.encode(this);
+        },
+        toString: function () {
+          return this.toContextString();
+        },
+        [Symbol.toPrimitive]: function () {
+          return this.toContextString();
+        },
+      };
+      context.nodes.set(node.id, out);
+      return out;
   }
 }
 function emitCollectionValue(context: Context, node: Parser.SyntaxNode) {

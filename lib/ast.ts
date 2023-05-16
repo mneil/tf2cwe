@@ -7,6 +7,7 @@ export type Attribute = string | number;
  */
 export interface Node {
   readonly id: number;
+  resolve: (this: Node) => void | null | undefined;
   is: (type: Type) => boolean;
 }
 /**
