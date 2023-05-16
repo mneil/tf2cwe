@@ -3,6 +3,13 @@ set -e
 
 DIR=$PWD
 
+if grep -q 'const fetch = undefined;' node_modules/web-tree-sitter/tree-sitter.js; then
+  echo "web-tree-sitter already patched for fetch"
+else
+  echo "patching web-tree-sitter for fetch"
+  sed -i '1s/^/const fetch = undefined;\n/' node_modules/web-tree-sitter/tree-sitter.js
+fi
+
 # Do the needful with terraform
 $DIR/scripts/terraform
 # Do the needful with aws api stuff
@@ -17,5 +24,3 @@ npx tree-sitter build-wasm
 
 # Copy tree-sitter.wasm to root of the project for playground
 cp node_modules/web-tree-sitter/tree-sitter.wasm .
-
-

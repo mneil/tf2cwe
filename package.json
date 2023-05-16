@@ -14,7 +14,8 @@
     "build": "webpack",
     "build:wasm": "tree-sitter generate --no-bindings && tree-sitter build-wasm",
     "playground": "tree-sitter playground",
-    "watch:grammar": "scripts/watch"
+    "watch:grammar": "scripts/watch",
+    "bin": "ts-node bin/tf2cwe.ts"
   },
   "author": "Michael Neil",
   "license": "MIT",

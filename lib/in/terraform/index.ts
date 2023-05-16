@@ -71,7 +71,7 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
 const createParser = async (): Promise<Parser> => {
   await Parser.init({
     locateFile: () => {
-      return `file:${process.cwd()}/tree-sitter.wasm`;
+      return `${process.cwd()}/tree-sitter.wasm`;
     },
   });
   const parser = new Parser();
