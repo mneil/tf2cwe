@@ -27,6 +27,18 @@ export function emitBlockResource(context: Context, node: Parser.SyntaxNode): as
     name,
     service,
     product,
+    resolve: function () {
+      const self = this as ast.Resource;
+      for (const property in self.properties) {
+        const value = self.properties[property];
+        if (typeof value === "string") {
+          self.properties[property] = context.resolve(value);
+        }
+        if (ast.IsNode(value)) {
+          value.resolve?.apply?.(value);
+        }
+      }
+    },
     properties: {},
     is: (type: ast.Type) => {
       return type === ast.Type.Resource;

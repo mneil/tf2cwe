@@ -31,7 +31,7 @@ exports[`terraform HCL to CWE should pass 1`] = `
   "detail-type": "AWS API Call via CloudTrail",
   "region": "us-east-1",
   "resources": [
-    "arn:aws:ec2:us-east-1:123456789012:instance/app_server",
+    "arn:aws:ec2:us-east-1:123456789012:instance/app_server2",
   ],
   "source": "aws.ec2",
   "time": Any<String>,

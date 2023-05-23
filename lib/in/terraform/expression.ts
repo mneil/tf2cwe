@@ -1,4 +1,5 @@
 import assert from "assert";
+import { get } from "lodash";
 import Parser from "web-tree-sitter";
 import * as ast from "../../ast";
 import { Context } from "./types";
@@ -126,15 +127,19 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
     node.firstNamedChild.type === ExpressionNode.VariableExpression,
     `received node type ${node.firstNamedChild.type}. expected ${ExpressionNode.VariableExpression}`,
   );
-  let target = context.node.id;
   const is = (type: ast.Type) => {
     return type === ast.Type.Reference;
   };
   switch (node.firstNamedChild.text) {
     case NamedValue.Variable:
-      return { is, id: node.id, target: "variable", property: [node.lastNamedChild.lastNamedChild.text] };
+      return {
+        is,
+        resolve: null,
+        id: node.id,
+        property: [node.lastNamedChild.lastNamedChild.text],
+      };
     case NamedValue.Local:
-      return { is, id: node.id, target: "local", property: [node.lastNamedChild.lastNamedChild.text] };
+      return { is, resolve: null, id: node.id, property: [node.lastNamedChild.lastNamedChild.text] };
     case NamedValue.Module:
       const moduleProperty = node.namedChildren
         .map((node, index) => {
@@ -146,7 +151,7 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           return node.firstNamedChild.text;
         })
         .filter((c) => c !== undefined);
-      return { is, id: node.id, target: "module", property: moduleProperty };
+      return { is, resolve: null, id: node.id, property: moduleProperty };
     case NamedValue.Data:
       // TODO: have to figure out how to make this work and turn into AST
       assert.ok(false, "data source is unsupported at this time");
@@ -158,12 +163,12 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
       // TODO: allow configuration of the workspace? Can we infer it?
       return "";
     case NamedValue.Count:
-      return { is, id: node.id, target, property: ["_meta_", "index"] };
+      return { is, resolve: null, id: node.id, property: ["_meta_", "index"] };
     case NamedValue.Each:
       return {
         is,
+        resolve: null,
         id: node.id,
-        target,
         property: ["_meta_", "each", node.lastNamedChild.firstNamedChild.text],
       };
     case NamedValue.Self:
@@ -173,17 +178,65 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           return node.text;
         })
         .filter((c) => c !== undefined);
-      return { is, id: node.id, target, property: selfProperty };
+      return { is, resolve: null, id: node.id, property: selfProperty };
     default:
       // resource reference?
       if (node.namedChildCount === 1) {
         // local node reference
-        return { is, id: node.id, target, property: [node.firstNamedChild.text] };
+        const out = {
+          is,
+          resolve: function () {
+            // todo: find the name of the resource this thing is in and resolve it
+            this.toContextString = () => "todo";
+          },
+          id: node.id,
+          property: [node.firstNamedChild.text.replace(/^\./, "")],
+          toContextString: function () {
+            return context.encode(this);
+          },
+          toString: function () {
+            return this.toContextString();
+          },
+          [Symbol.toPrimitive]: function () {
+            return this.toContextString();
+          },
+        };
+        context.nodes.set(node.id, out);
+        return out;
       }
       const property = node.namedChildren.map((node) => {
         return node.text;
       });
-      return { is, id: node.id, target, property };
+      const out = {
+        is,
+        resolve: function () {
+          const name = this.property[0];
+          const resource = context.blocks.find((b) => {
+            return b.is(ast.Type.Resource) && (b as ast.Resource).name === name;
+          });
+          assert(resource, `unable to find resource ${name}`);
+          const accessor = this.property.slice(1).join("").replace(/^\./, "");
+          let concrete = get(resource, accessor);
+          if (ast.IsNode(concrete) && concrete.is(ast.Type.Reference)) {
+            concrete.resolve();
+            concrete = get(resource, accessor);
+          }
+          this.toContextString = () => concrete;
+        },
+        id: node.id,
+        property,
+        toContextString: function () {
+          return context.encode(this);
+        },
+        toString: function () {
+          return this.toContextString();
+        },
+        [Symbol.toPrimitive]: function () {
+          return this.toContextString();
+        },
+      };
+      context.nodes.set(node.id, out);
+      return out;
   }
 }
 function emitCollectionValue(context: Context, node: Parser.SyntaxNode) {

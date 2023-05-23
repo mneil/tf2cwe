@@ -1,6 +1,6 @@
+import fs from "fs";
 import path from "path";
 import assert from "assert";
-import fs from "fs";
 import Parser from "web-tree-sitter";
 import * as ast from "../../ast";
 import { walk } from "../input";
@@ -71,7 +71,7 @@ function emitBlock(context: Context, node: Parser.SyntaxNode): ast.Node {
 const createParser = async (): Promise<Parser> => {
   await Parser.init({
     locateFile: () => {
-      return `file:${process.cwd()}/tree-sitter.wasm`;
+      return `${process.cwd()}/tree-sitter.wasm`;
     },
   });
   const parser = new Parser();
@@ -106,9 +106,40 @@ export async function compile(input: string): Promise<ast.Node[]> {
     .query("(block) @block")
     .captures(tree.rootNode)
     .flatMap((q) => q);
-  const context: Context = { node: undefined /*, blockCache, blockRoots*/, parser, blocks: [] };
+  const context: Context = {
+    node: undefined,
+    parser,
+    blocks: [],
+    nodes: new Map(),
+    encode: (node: ast.Node) => {
+      if (node.is(ast.Type.Reference)) {
+        const ref = node as ast.Reference;
+        return `@@{{${ref.id}}}@@`;
+      } else {
+        throw new Error(`encode not available for: ${node.id}`);
+      }
+    },
+    resolve: (chunk: string): string => {
+      return chunk.replace(/@@{{(.+?)}}@@/g, (_, id) => {
+        const node = context.nodes.get(Number(id));
+        assert(node, `unable to find node with id ${id}`);
+        node.resolve?.apply(node);
+        const encode = `${node}`;
+        const encodedId = encode.match(/@@{{(.+?)}}@@/)?.[1];
+        if (encodedId && encodedId !== id) {
+          return context.resolve(encode);
+        } else {
+          assert(!encode.startsWith("@@{{"), `node ${node.id} failed to resolve`);
+          return encode;
+        }
+      });
+    },
+  };
   for (const block of blocks) {
     emitBlock({ ...context, node: block.node }, block.node);
+  }
+  for (const block of context.blocks) {
+    block.resolve?.apply(block);
   }
   return context.blocks;
 }

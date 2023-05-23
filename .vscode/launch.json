@@ -5,6 +5,15 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch: Binary",
+      "request": "launch",
+      "runtimeArgs": ["run-script", "bin"],
+      "runtimeExecutable": "npm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "args": ["--", "test/fixtures/terraform"]
+    },
+    {
       "name": "Compile: hcl",
       "type": "node",
       "request": "launch",

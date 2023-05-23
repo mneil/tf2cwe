@@ -2,11 +2,16 @@ type Value = string | number | boolean | Reference;
 export type PropertyValue = Value | Value[] | Record<string, Value | Value[]>;
 export type Attribute = string | number;
 
+export function IsNode(node: any): node is Node {
+  return typeof node === "object" && node !== null && "id" in node && "resolve" in node && "is" in node;
+}
+
 /**
  * A basic Node in the AST. Everything is a Node
  */
 export interface Node {
   readonly id: number;
+  resolve: (this: Node) => void | null | undefined;
   is: (type: Type) => boolean;
 }
 /**
@@ -30,11 +35,6 @@ export interface Config extends Node {}
  * Reference Node. Holds a reference to another node
  */
 export interface Reference extends Node {
-  /**
-   * The target node id
-   * TODO: target can currently be a string but needs to ONLY be a number when this is done.
-   */
-  readonly target: string | number;
   /**
    * The location we which to retrieve from the target
    */
