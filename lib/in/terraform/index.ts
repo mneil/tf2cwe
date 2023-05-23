@@ -1,6 +1,6 @@
+import fs from "fs";
 import path from "path";
 import assert from "assert";
-import fs from "fs";
 import Parser from "web-tree-sitter";
 import * as ast from "../../ast";
 import { walk } from "../input";
@@ -114,20 +114,19 @@ export async function compile(input: string): Promise<ast.Node[]> {
     encode: (node: ast.Node) => {
       if (node.is(ast.Type.Reference)) {
         const ref = node as ast.Reference;
-        return `@@{{${ref.id}:${ref.property.join("")}}}@@`;
+        return `@@{{${ref.id}}}@@`;
       } else {
         throw new Error(`unhandled node type: ${node.id}`);
       }
     },
-    resolve: (chunk: string) => {
-      return chunk.replace(/@@{{(.+?)}}@@/g, (match, p1) => {
-        const [id] = p1.split(":");
+    resolve: (chunk: string): string => {
+      return chunk.replace(/@@{{(.+?)}}@@/g, (_, id) => {
         const node = context.nodes.get(Number(id));
-        if (!node) {
-          throw new Error(`unable to find node with id ${id}`);
-        }
+        assert(node, `unable to find node with id ${id}`);
         node.resolve?.apply(node);
-        return `${node}`;
+        const encode = `${node}`;
+        assert(!encode.startsWith("@@{{"), `node ${node.id} failed to resolve`);
+        return encode;
       });
     },
   };
