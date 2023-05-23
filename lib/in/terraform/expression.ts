@@ -192,11 +192,17 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
       const out = {
         is,
         resolve: function () {
+          const name = this.property[0];
           const resource = context.blocks.find((b) => {
-            return b.is(ast.Type.Resource) && (b as ast.Resource).name === this.property[0];
+            return b.is(ast.Type.Resource) && (b as ast.Resource).name === name;
           });
+          assert(resource, `unable to find resource ${name}`);
           const accessor = this.property.slice(1).join("").replace(/^\./, "");
-          const concrete = get(resource, accessor);
+          let concrete = get(resource, accessor);
+          if (ast.IsNode(concrete) && concrete.is(ast.Type.Reference)) {
+            concrete.resolve();
+            concrete = get(resource, accessor);
+          }
           this.toContextString = () => concrete;
         },
         id: node.id,

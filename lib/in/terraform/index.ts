@@ -116,7 +116,7 @@ export async function compile(input: string): Promise<ast.Node[]> {
         const ref = node as ast.Reference;
         return `@@{{${ref.id}}}@@`;
       } else {
-        throw new Error(`unhandled node type: ${node.id}`);
+        throw new Error(`encode not available for: ${node.id}`);
       }
     },
     resolve: (chunk: string): string => {
@@ -125,8 +125,13 @@ export async function compile(input: string): Promise<ast.Node[]> {
         assert(node, `unable to find node with id ${id}`);
         node.resolve?.apply(node);
         const encode = `${node}`;
-        assert(!encode.startsWith("@@{{"), `node ${node.id} failed to resolve`);
-        return encode;
+        const encodedId = encode.match(/@@{{(.+?)}}@@/)?.[1];
+        if (encodedId && encodedId !== id) {
+          return context.resolve(encode);
+        } else {
+          assert(!encode.startsWith("@@{{"), `node ${node.id} failed to resolve`);
+          return encode;
+        }
       });
     },
   };

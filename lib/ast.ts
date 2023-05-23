@@ -2,6 +2,10 @@ type Value = string | number | boolean | Reference;
 export type PropertyValue = Value | Value[] | Record<string, Value | Value[]>;
 export type Attribute = string | number;
 
+export function IsNode(node: any): node is Node {
+  return typeof node === "object" && node !== null && "id" in node && "resolve" in node && "is" in node;
+}
+
 /**
  * A basic Node in the AST. Everything is a Node
  */
