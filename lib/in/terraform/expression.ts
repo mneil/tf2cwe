@@ -137,11 +137,10 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
         is,
         resolve: null,
         id: node.id,
-        target: "variable",
         property: [node.lastNamedChild.lastNamedChild.text],
       };
     case NamedValue.Local:
-      return { is, resolve: null, id: node.id, target: "local", property: [node.lastNamedChild.lastNamedChild.text] };
+      return { is, resolve: null, id: node.id, property: [node.lastNamedChild.lastNamedChild.text] };
     case NamedValue.Module:
       const moduleProperty = node.namedChildren
         .map((node, index) => {
@@ -153,7 +152,7 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           return node.firstNamedChild.text;
         })
         .filter((c) => c !== undefined);
-      return { is, resolve: null, id: node.id, target: "module", property: moduleProperty };
+      return { is, resolve: null, id: node.id, property: moduleProperty };
     case NamedValue.Data:
       // TODO: have to figure out how to make this work and turn into AST
       assert.ok(false, "data source is unsupported at this time");
@@ -165,13 +164,12 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
       // TODO: allow configuration of the workspace? Can we infer it?
       return "";
     case NamedValue.Count:
-      return { is, resolve: null, id: node.id, target, property: ["_meta_", "index"] };
+      return { is, resolve: null, id: node.id, property: ["_meta_", "index"] };
     case NamedValue.Each:
       return {
         is,
         resolve: null,
         id: node.id,
-        target,
         property: ["_meta_", "each", node.lastNamedChild.firstNamedChild.text],
       };
     case NamedValue.Self:
@@ -181,12 +179,12 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           return node.text;
         })
         .filter((c) => c !== undefined);
-      return { is, resolve: null, id: node.id, target, property: selfProperty };
+      return { is, resolve: null, id: node.id, property: selfProperty };
     default:
       // resource reference?
       if (node.namedChildCount === 1) {
         // local node reference
-        return { is, resolve: null, id: node.id, target, property: [node.firstNamedChild.text] };
+        return { is, resolve: null, id: node.id, property: [node.firstNamedChild.text] };
       }
       const property = node.namedChildren.map((node) => {
         return node.text;

@@ -32,11 +32,6 @@ export interface Config extends Node {}
  */
 export interface Reference extends Node {
   /**
-   * The target node id
-   * TODO: target can currently be a string but needs to ONLY be a number when this is done.
-   */
-  readonly target: string | number;
-  /**
    * The location we which to retrieve from the target
    */
   readonly property: Attribute[];
