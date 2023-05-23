@@ -127,7 +127,6 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
     node.firstNamedChild.type === ExpressionNode.VariableExpression,
     `received node type ${node.firstNamedChild.type}. expected ${ExpressionNode.VariableExpression}`,
   );
-  let target = context.node.id;
   const is = (type: ast.Type) => {
     return type === ast.Type.Reference;
   };
@@ -184,7 +183,26 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
       // resource reference?
       if (node.namedChildCount === 1) {
         // local node reference
-        return { is, resolve: null, id: node.id, property: [node.firstNamedChild.text] };
+        const out = {
+          is,
+          resolve: function () {
+            // todo: find the name of the resource this thing is in and resolve it
+            this.toContextString = () => "todo";
+          },
+          id: node.id,
+          property: [node.firstNamedChild.text.replace(/^\./, "")],
+          toContextString: function () {
+            return context.encode(this);
+          },
+          toString: function () {
+            return this.toContextString();
+          },
+          [Symbol.toPrimitive]: function () {
+            return this.toContextString();
+          },
+        };
+        context.nodes.set(node.id, out);
+        return out;
       }
       const property = node.namedChildren.map((node) => {
         return node.text;
@@ -206,7 +224,6 @@ function emitVariableExpression(context: Context, node: Parser.SyntaxNode): stri
           this.toContextString = () => concrete;
         },
         id: node.id,
-        target,
         property,
         toContextString: function () {
           return context.encode(this);

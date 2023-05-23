@@ -34,8 +34,8 @@ export function emitBlockResource(context: Context, node: Parser.SyntaxNode): as
         if (typeof value === "string") {
           self.properties[property] = context.resolve(value);
         }
-        if (ast.IsNode(value) && value.is(ast.Type.Reference)) {
-          value.resolve.apply?.(value);
+        if (ast.IsNode(value)) {
+          value.resolve?.apply?.(value);
         }
       }
     },

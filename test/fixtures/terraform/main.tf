@@ -1,6 +1,13 @@
 locals {
   atlantis_image = "ami-830c94e3"
 }
+resource "aws_instance" "app_server2" {
+  ami           = "ami-830c94e3"
+  instance_type = "t2.micro"
+  active = false
+  number = 2
+  name  = "my-ec2-cluster-${app_server.name}-bar"
+}
 resource "aws_instance" "app_server" {
   ami           = "ami-830c94e3"
   instance_type = "t2.micro"
