@@ -15,7 +15,8 @@
     "build:wasm": "tree-sitter generate --no-bindings && tree-sitter build-wasm",
     "playground": "tree-sitter playground",
     "watch:grammar": "scripts/watch",
-    "bin": "ts-node bin/tf2cwe.ts"
+    "bin": "ts-node bin/tf2cwe.ts",
+    "plan": "terraform plan -out tfplan && terraform show -json tfplan > tfplan.json"
   },
   "author": "Michael Neil",
   "license": "MIT",
