@@ -3,6 +3,8 @@ import crypto from "crypto";
 import fs from "fs";
 import * as types from "./types";
 import { ast } from "../..";
+import * as hooks from "../../hooks";
+import "./plugins";
 
 export * as types from "./types";
 
@@ -88,49 +90,57 @@ async function resourceToEvent(node: ast.Resource, config: Config): Promise<type
   const api = await getResourceApiCalls("aws", node.service, node.product);
   const arn = serviceToArn({ ...config, product: node.product, service: node.service, name: node.name });
 
-  return api.create.map((operation) => {
-    return {
-      version: "0",
-      id: crypto.randomUUID(),
-      "detail-type": "AWS API Call via CloudTrail",
-      source: `aws.${node.service}`,
-      account: config.accountId,
-      time: new Date().toISOString(),
-      region: config.region,
-      resources: [arn],
-      detail: {
-        eventVersion: types.EVENT_VERSION,
-        // TODO: have userIdentity be configurable from config type / comments
-        userIdentity: {
-          type: types.UserIdentityType.Root,
-          principalId: "123456789012",
-          arn: "arn:aws:iam::123456789012:root",
-          accountId: "123456789012",
-          sessionContext: {
-            attributes: {
-              mfaAuthenticated: "false",
-              creationDate: new Date().toISOString(),
+  const calls = await Promise.all(
+    api.create.map(async (operation) => {
+      let resource: types.Event = {
+        version: "0",
+        id: crypto.randomUUID(),
+        "detail-type": "AWS API Call via CloudTrail",
+        source: `aws.${node.service}`,
+        account: config.accountId,
+        time: new Date().toISOString(),
+        region: config.region,
+        resources: [arn],
+        detail: {
+          eventVersion: types.EVENT_VERSION,
+          // TODO: have userIdentity be configurable from config type / comments
+          userIdentity: {
+            type: types.UserIdentityType.Root,
+            principalId: "123456789012",
+            arn: "arn:aws:iam::123456789012:root",
+            accountId: "123456789012",
+            sessionContext: {
+              attributes: {
+                mfaAuthenticated: "false",
+                creationDate: new Date().toISOString(),
+              },
             },
           },
+          eventTime: new Date().toISOString(),
+          eventSource: `${node.service}.amazonaws.com`,
+          // TODO: Find this eventName
+          eventName: operation.action,
+          awsRegion: config.region,
+          sourceIPAddress: "100.100.100.100",
+          userAgent: config.userAgent,
+          // TODO: fill in / resolve the request parameters
+          requestParameters: {
+            // ...node.properties,
+          },
+          responseElements: {},
+          requestID: makeRequestId(),
+          eventID: crypto.randomUUID(),
+          eventType: config.eventType,
         },
-        eventTime: new Date().toISOString(),
-        eventSource: `${node.service}.amazonaws.com`,
-        // TODO: Find this eventName
-        eventName: operation.action,
-        awsRegion: config.region,
-        sourceIPAddress: "100.100.100.100",
-        userAgent: config.userAgent,
-        // TODO: fill in / resolve the request parameters
-        requestParameters: {
-          // ...node.properties,
-        },
-        responseElements: null,
-        requestID: makeRequestId(),
-        eventID: crypto.randomUUID(),
-        eventType: config.eventType,
-      },
-    };
-  });
+      };
+      resource = await hooks.out.cwe.modifyResource.promise(resource, node, "create");
+      if ((await hooks.out.cwe.excludeResource.promise(resource, node, "create")) !== undefined) {
+        return undefined;
+      }
+      return resource;
+    }),
+  );
+  return calls.filter((resource) => resource !== undefined);
 }
 
 export async function compile(nodes: ast.Node[]) {
@@ -152,5 +162,6 @@ export async function compile(nodes: ast.Node[]) {
         }
       }),
   );
-  return resources.flat();
+  const flat = resources.flat();
+  return await hooks.out.cwe.finalize.promise(flat);
 }
