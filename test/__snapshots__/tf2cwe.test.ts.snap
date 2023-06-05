@@ -5,14 +5,15 @@ exports[`terraform HCL to CWE should pass 1`] = `
   "account": "123456789012",
   "detail": {
     "awsRegion": "us-east-1",
-    "eventName": "CreateBucket",
+    "eventID": Any<String>,
+    "eventName": "DescribeLaunchTemplateVersions",
     "eventSource": "ec2.amazonaws.com",
     "eventTime": Any<String>,
     "eventType": 0,
     "eventVersion": "1.08",
-    "requestID": "9D767BCC3B4E7487",
+    "requestID": Any<String>,
     "requestParameters": {},
-    "responseElements": null,
+    "responseElements": {},
     "sourceIPAddress": "100.100.100.100",
     "userAgent": "signin.amazonaws.com",
     "userIdentity": {
@@ -29,6 +30,7 @@ exports[`terraform HCL to CWE should pass 1`] = `
     },
   },
   "detail-type": "AWS API Call via CloudTrail",
+  "id": Any<String>,
   "region": "us-east-1",
   "resources": [
     "arn:aws:ec2:us-east-1:123456789012:instance/app_server2",

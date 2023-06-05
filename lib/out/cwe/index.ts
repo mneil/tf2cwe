@@ -1,7 +1,12 @@
 import path from "path";
 import crypto from "crypto";
+import fs from "fs";
 import * as types from "./types";
 import { ast } from "../..";
+import * as hooks from "../../hooks";
+import "./plugins";
+
+export * as types from "./types";
 
 interface Config {
   accountId: string;
@@ -20,7 +25,22 @@ interface ArnResource {
   name: string;
 }
 
+function makeRequestId() {
+  const length = 16;
+  let result = "";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
+  const charactersLength = characters.length;
+  let counter = 0;
+  while (counter < length) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    counter += 1;
+  }
+  return result;
+}
+
 function serviceToArn(resource: ArnResource) {
+  // TODO: this needs to be smarter to handle all sorts of arn formats
+  // including those with ids and tokens. See S3 for a good example
   const serviceDefinition = require(path.resolve(
     __dirname,
     "..",
@@ -40,66 +60,108 @@ function serviceToArn(resource: ArnResource) {
   return arnFormat;
 }
 
-function resourceToEvent(node: ast.Resource, config: Config): types.Event {
+interface ApiCall {
+  service: string;
+  action: string;
+}
+interface Crud {
+  create: ApiCall[];
+  read: ApiCall[];
+  update: ApiCall[];
+  delete: ApiCall[];
+}
+
+const providerData: Record<string, any> = {
+  aws: undefined,
+};
+
+async function getResourceApiCalls(provider: string, service: string, product: string): Promise<Crud> {
+  let data;
+  if (providerData[provider]) {
+    data = providerData[provider];
+  } else {
+    data = await fs.promises.readFile(path.resolve(__dirname, "data", `${provider}.json`), "utf-8");
+    providerData[provider] = JSON.parse(data);
+  }
+  return providerData[provider][service][product];
+}
+
+async function resourceToEvent(node: ast.Resource, config: Config): Promise<types.Event[]> {
+  const api = await getResourceApiCalls("aws", node.service, node.product);
   const arn = serviceToArn({ ...config, product: node.product, service: node.service, name: node.name });
-  return {
-    version: "0",
-    id: crypto.randomUUID(),
-    "detail-type": "AWS API Call via CloudTrail",
-    source: `aws.${node.service}`,
-    account: config.accountId,
-    time: new Date().toISOString(),
-    region: config.region,
-    // TODO: need to handle all types of arn formats including those with ids and tokens. See S3 for a good example
-    resources: [arn],
-    detail: {
-      eventVersion: types.EVENT_VERSION,
-      // TODO: have userIdentity be configurable from config type / comments
-      userIdentity: {
-        type: types.UserIdentityType.Root,
-        principalId: "123456789012",
-        arn: "arn:aws:iam::123456789012:root",
-        accountId: "123456789012",
-        sessionContext: {
-          attributes: {
-            mfaAuthenticated: "false",
-            creationDate: new Date().toISOString(),
+
+  const calls = await Promise.all(
+    api.create.map(async (operation) => {
+      let resource: types.Event = {
+        version: "0",
+        id: crypto.randomUUID(),
+        "detail-type": "AWS API Call via CloudTrail",
+        source: `aws.${node.service}`,
+        account: config.accountId,
+        time: new Date().toISOString(),
+        region: config.region,
+        resources: [arn],
+        detail: {
+          eventVersion: types.EVENT_VERSION,
+          // TODO: have userIdentity be configurable from config type / comments
+          userIdentity: {
+            type: types.UserIdentityType.Root,
+            principalId: "123456789012",
+            arn: "arn:aws:iam::123456789012:root",
+            accountId: "123456789012",
+            sessionContext: {
+              attributes: {
+                mfaAuthenticated: "false",
+                creationDate: new Date().toISOString(),
+              },
+            },
           },
+          eventTime: new Date().toISOString(),
+          eventSource: `${node.service}.amazonaws.com`,
+          // TODO: Find this eventName
+          eventName: operation.action,
+          awsRegion: config.region,
+          sourceIPAddress: "100.100.100.100",
+          userAgent: config.userAgent,
+          // TODO: fill in / resolve the request parameters
+          requestParameters: {
+            // ...node.properties,
+          },
+          responseElements: {},
+          requestID: makeRequestId(),
+          eventID: crypto.randomUUID(),
+          eventType: config.eventType,
         },
-      },
-      eventTime: new Date().toISOString(),
-      eventSource: `${node.service}.amazonaws.com`,
-      // TODO: Find this eventName
-      eventName: "CreateBucket",
-      awsRegion: config.region,
-      sourceIPAddress: "100.100.100.100",
-      userAgent: config.userAgent,
-      // TODO: fill in / resolve the request parameters
-      requestParameters: {},
-      responseElements: null,
-      requestID: "9D767BCC3B4E7487",
-      eventID: crypto.randomUUID(),
-      eventType: config.eventType,
-    },
-  };
+      };
+      resource = await hooks.out.cwe.modifyResource.promise(resource, node, "create");
+      if ((await hooks.out.cwe.excludeResource.promise(resource, node, "create")) !== undefined) {
+        return undefined;
+      }
+      return resource;
+    }),
+  );
+  return calls.filter((resource) => resource !== undefined);
 }
 
 export async function compile(nodes: ast.Node[]) {
-  const resources = nodes
-    .filter((n) => n.is(ast.Type.Resource))
-    .map((r: ast.Resource) => {
-      try {
-        return resourceToEvent(r, {
-          accountId: "123456789012",
-          region: "us-east-1",
-          userAgent: types.UserAgent.User,
-          eventType: types.EventType.AwsApiCall,
-          partition: types.Partition.Aws,
-        });
-      } catch (e) {
-        console.warn(`Unable to resolve resource for ${r.service} ${r.product} ${r.name}`);
-        return undefined;
-      }
-    });
-  return resources;
+  const resources = await Promise.all(
+    nodes
+      .filter((n) => n.is(ast.Type.Resource))
+      .map(async (r: ast.Resource) => {
+        try {
+          return await resourceToEvent(r, {
+            accountId: "123456789012",
+            region: "us-east-1",
+            userAgent: types.UserAgent.User,
+            eventType: types.EventType.AwsApiCall,
+            partition: types.Partition.Aws,
+          });
+        } catch (e) {
+          console.warn(`Unable to resolve resource for ${r.service} ${r.product} ${r.name}`);
+          return undefined;
+        }
+      }),
+  );
+  const flat = resources.flat();
+  return await hooks.out.cwe.finalize.promise(flat);
 }
